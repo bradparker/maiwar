@@ -1,0 +1,23 @@
+cabal-version:      2.4
+name:               maiwar
+version:            0.1.0.0
+synopsis:           Pipes and streams
+description:        Bi- and uni-directional data/control structures for streaming.
+bug-reports:        https://github.com/bradparker/maiwar
+license:            BSD-3-Clause
+author:             Brad Parker
+maintainer:         hi@bradparker.com
+
+extra-source-files:
+    README.md
+
+library
+    exposed-modules:  Maiwar.Pipe
+                      Maiwar.Stream
+                      Maiwar.Stream.ByteString
+    build-depends:    base ^>=4.16.0.0,
+                      bytestring,
+                      mtl,
+                      transformers,
+    hs-source-dirs:   lib
+    default-language: Haskell2010
