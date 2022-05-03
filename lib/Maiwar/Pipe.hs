@@ -11,62 +11,62 @@ import Control.Monad.Trans.Class (MonadTrans (lift))
 import Data.Bifunctor (first)
 import Maiwar.Stream (Stream (Stream), next, run, yield)
 
-newtype Pipe i o f a
-  = Pipe (forall x. StateT (Stream i f x) (Stream o f) a)
+newtype Pipe i o m a
+  = Pipe (forall x. StateT (Stream i m x) (Stream o m) a)
 
-instance forall i o f. Functor f => Functor (Pipe i o f) where
-  fmap :: forall a b. (a -> b) -> Pipe i o f a -> Pipe i o f b
+instance forall i o m. Functor m => Functor (Pipe i o m) where
+  fmap :: forall a b. (a -> b) -> Pipe i o m a -> Pipe i o m b
   fmap f (Pipe sa) = Pipe (fmap f sa)
 
-instance forall i o f. Monad f => Applicative (Pipe i o f) where
-  pure :: a -> Pipe i o f a
+instance forall i o m. Monad m => Applicative (Pipe i o m) where
+  pure :: a -> Pipe i o m a
   pure a = Pipe (pure a)
 
-  (*>) :: Pipe i o f a -> Pipe i o f b -> Pipe i o f b
+  (*>) :: Pipe i o m a -> Pipe i o m b -> Pipe i o m b
   Pipe as *> Pipe bs = Pipe (as *> bs)
 
-  (<*>) :: Pipe i o f (a -> b) -> Pipe i o f a -> Pipe i o f b
+  (<*>) :: Pipe i o m (a -> b) -> Pipe i o m a -> Pipe i o m b
   Pipe fs <*> Pipe as = Pipe (fs <*> as)
 
-instance forall i o f. Monad f => Monad (Pipe i o f) where
-  (>>=) :: forall a b. Pipe i o f a -> (a -> Pipe i o f b) -> Pipe i o f b
+instance forall i o m. Monad m => Monad (Pipe i o m) where
+  (>>=) :: forall a b. Pipe i o m a -> (a -> Pipe i o m b) -> Pipe i o m b
   Pipe p >>= k = Pipe (p >>= (\a -> case k a of Pipe q -> q))
 
-instance forall i o f. MonadFail f => MonadFail (Pipe i o f) where
-  fail :: String -> Pipe i o f a
+instance forall i o m. MonadFail m => MonadFail (Pipe i o m) where
+  fail :: String -> Pipe i o m a
   fail = lift . fail
 
 instance forall i o. MonadTrans (Pipe i o) where
-  lift :: forall f a. Monad f => f a -> Pipe i o f a
+  lift :: forall m a. Monad m => m a -> Pipe i o m a
   lift fa = Pipe (lift (lift fa))
 
-instance forall i o f. MonadIO f => MonadIO (Pipe i o f) where
-  liftIO :: forall a. IO a -> Pipe i o f a
+instance forall i o m. MonadIO m => MonadIO (Pipe i o m) where
+  liftIO :: forall a. IO a -> Pipe i o m a
   liftIO = lift . liftIO
 
 runPipe ::
-  forall i o f a b.
-  Pipe i o f b ->
-  Stream i f a ->
-  Stream o f (b, Stream i f a)
+  forall i o m a b.
+  Pipe i o m b ->
+  Stream i m a ->
+  Stream o m (b, Stream i m a)
 runPipe (Pipe s) = runStateT s
 
 execPipe ::
-  forall i o f a b.
-  Functor f =>
-  Pipe i o f b ->
-  Stream i f a ->
-  Stream o f (Stream i f a)
+  forall i o m a b.
+  Functor m =>
+  Pipe i o m b ->
+  Stream i m a ->
+  Stream o m (Stream i m a)
 execPipe p s = fmap snd (runPipe p s)
 
-receive :: forall i o f. Monad f => Pipe i o f (Maybe i)
+receive :: forall i o m. Monad m => Pipe i o m (Maybe i)
 receive = Pipe $ StateT \input -> Stream do
   step <- next input
   case step of
     Left a -> pure (Left (Nothing, pure a))
     Right (i, rest) -> pure (Left (Just i, rest))
 
-send :: forall i o f. Monad f => o -> Pipe i o f ()
+send :: forall i o m. Monad m => o -> Pipe i o m ()
 send o = Pipe (lift (yield o))
 
 -- | Compose
@@ -110,15 +110,15 @@ compose pipeA pipeB =
         )
     )
 
-type Consumer i f a = forall x. Pipe i x f a
+type Consumer i m a = forall x. Pipe i x m a
 
 subState ::
-  forall f s t a.
-  Monad f =>
+  forall m s t a.
+  Monad m =>
   (s -> t) ->
   (t -> s) ->
-  StateT t f a ->
-  StateT s f a
+  StateT t m a ->
+  StateT s m a
 subState i o st = StateT (fmap (fmap o) . runStateT st . i)
 
 subInput ::
