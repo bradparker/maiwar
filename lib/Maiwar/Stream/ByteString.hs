@@ -8,7 +8,12 @@ import qualified Data.ByteString as BS
 import Maiwar.Stream (Stream, next, yield)
 import Prelude hiding (drop, splitAt)
 
-splitAt :: forall m a. Monad m => Int -> Stream ByteString m a -> Stream ByteString m (Stream ByteString m a)
+splitAt ::
+  forall m a.
+  Monad m =>
+  Int ->
+  Stream ByteString m a ->
+  Stream ByteString m (Stream ByteString m a)
 splitAt n stream
   | n <= 0 = pure stream
   | otherwise = do
@@ -24,7 +29,12 @@ splitAt n stream
               yield bytes
               splitAt (n - BS.length bytes) rest
 
-drop :: forall m a. Monad m => Int -> Stream ByteString m a -> Stream ByteString m a
+drop ::
+  forall m a.
+  Monad m =>
+  Int ->
+  Stream ByteString m a ->
+  Stream ByteString m a
 drop n stream
   | n <= 0 = stream
   | otherwise = do
