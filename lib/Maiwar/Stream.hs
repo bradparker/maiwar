@@ -124,8 +124,4 @@ run = fold \action -> do
     Right (_, rest) -> rest
 
 flush :: forall o m a. (Monad m) => Stream o m a -> Stream o m a
-flush = fold \action -> Stream do
-  step <- action
-  case step of
-    Left r -> pure (Left r)
-    Right (_, rest) -> next rest
+flush = lift . run
