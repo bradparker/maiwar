@@ -84,24 +84,35 @@ send o = Pipe (lift (yield o))
 --       Just a -> send (f a)
 -- :}
 --
--- >>> a = replicateM_ 5 (pipe (\n -> replicate n 'a'))
--- >>> b = replicateM_ 6 (pipe (* 2))
--- >>> c = replicateM_ 7 (pipe (+ 1))
+-- >>> a = replicateM_ 5 (pipe (\n -> replicate n 'a')) *> pure 'A'
+-- >>> b = replicateM_ 6 (pipe (* 2)) *> pure 'B'
+-- >>> c = replicateM_ 7 (pipe (+ 1)) *> pure 'C'
 -- >>> d = a `compose` (b `compose` c)
--- >>> run (for (void (runPipe d (forever (yield 3)))) (liftIO . print))
+-- >>> fst <$> run (for (runPipe d (forever (yield 3))) (liftIO . print))
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
+-- 'A'
 -- >>> e = (a `compose` b) `compose` c
--- >>> run (for (void (runPipe e (forever (yield 3)))) (liftIO . print))
+-- >>> fst <$> run (for (runPipe e (forever (yield 3))) (liftIO . print))
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
-compose :: forall m a b c r. Monad m => Pipe b c m r -> Pipe a b m r -> Pipe a c m r
+-- 'A'
+-- >>> f = b `compose` c
+-- >>> fst <$> run (for (runPipe f (forever (yield 3))) (liftIO . print))
+-- 8
+-- 8
+-- 8
+-- 8
+-- 8
+-- 8
+-- 'B'
+compose :: forall m a b c r s. Monad m => Pipe b c m r -> Pipe a b m s -> Pipe a c m r
 compose pipeA pipeB =
   Pipe
     ( StateT
