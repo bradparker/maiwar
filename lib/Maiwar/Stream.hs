@@ -94,7 +94,7 @@ instance forall o e m. (MonadError e m) => MonadError e (Stream o m) where
   catchError :: Stream f m a -> (e -> Stream f m a) -> Stream f m a
   catchError stream catcher = Stream (next stream `catchError` (next . catcher))
 
-for :: forall a b m r. Monad m => Stream a m r -> (a -> Stream b m r) -> Stream b m r
+for :: forall a b m r s. Monad m => Stream a m r -> (a -> Stream b m s) -> Stream b m r
 for stream f = (`fold` stream) \action -> do
   step1 <- lift action
   case step1 of
