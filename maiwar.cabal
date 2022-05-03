@@ -14,8 +14,10 @@ extra-source-files:
 library
     exposed-modules:  Maiwar.Pipe
                       Maiwar.Stream
+                      Maiwar.Stream.Attoparsec.ByteString
                       Maiwar.Stream.ByteString
     build-depends:    base ^>=4.16.0.0,
+                      attoparsec,
                       bytestring,
                       mtl,
                       transformers,
