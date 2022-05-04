@@ -3,8 +3,12 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LiberalTypeSynonyms #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoFieldSelectors #-}
@@ -12,7 +16,8 @@
 
 module Maiwar.Network.HTTP where
 
-import Control.Monad ((<=<))
+import Control.Monad (join, when, (<=<))
+import Control.Monad.Trans (lift)
 import Data.Attoparsec.ByteString (Parser)
 import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
 import Data.ByteString (ByteString)
@@ -21,6 +26,11 @@ import qualified Data.Char as Char
 import qualified Data.List as List
 import Data.Maybe (listToMaybe)
 import GHC.Exts (IsList (fromList, toList, type Item), IsString (fromString))
+import Maiwar.Pipe (Consumer, Pipe, compose, execPipe, receive, send, subInput)
+import Maiwar.Stream (Stream, flush, next, yield)
+import qualified Maiwar.Stream.Attoparsec.ByteString as Stream.Attoparsec
+import qualified Maiwar.Stream.ByteString as Stream.ByteString
+import Numeric (showHex)
 import Text.Read (readMaybe)
 
 newtype Method = Method ByteString
@@ -185,3 +195,138 @@ headersParser = Headers <$> Attoparsec.manyTill headerFieldParser crlfParser
 
 chunkSizeParser :: Parser Int
 chunkSizeParser = Attoparsec.hexadecimal <* crlfParser
+
+requestBody ::
+  forall m a.
+  Monad m =>
+  Headers ->
+  Stream ByteString m a ->
+  Stream ByteString m (Stream ByteString m a)
+requestBody headers stream =
+  if isChunked headers
+    then chunkedBody stream
+    else case contentLength headers of
+      Nothing -> pure stream
+      Just i -> knownBody i stream
+
+knownBody ::
+  forall m a.
+  Monad m =>
+  Int ->
+  Stream ByteString m a ->
+  Stream ByteString m (Stream ByteString m a)
+knownBody = Stream.ByteString.splitAt
+
+chunkedBody ::
+  forall m a.
+  Monad m =>
+  Stream ByteString m a ->
+  Stream ByteString m (Stream ByteString m a)
+chunkedBody stream = do
+  (result, rest) <- lift (Stream.Attoparsec.parse chunkSizeParser stream)
+  case result of
+    Left _e -> pure rest
+    Right size -> do
+      if size == 0
+        then pure (Stream.ByteString.drop 2 rest)
+        else chunkedBody . Stream.ByteString.drop 2 =<< Stream.ByteString.splitAt size rest
+
+sendResponse :: forall m. Monad m => Response (Pipe ByteString ByteString m ()) -> Pipe ByteString ByteString m ()
+sendResponse response = (`compose` response.body) do
+  input <- receive
+  case input of
+    Nothing -> do
+      send
+        ( serializeResponsePreamble
+            response.httpVersion
+            response.status
+            (response.headers <> ["Content-Length" =: "0"])
+        )
+    Just bytes -> do
+      send
+        ( serializeResponsePreamble
+            response.httpVersion
+            response.status
+            (addChunkedEncoding response.headers)
+        )
+      send (encodeChunk bytes)
+      encodeChunks
+  where
+    addChunkedEncoding :: Headers -> Headers
+    addChunkedEncoding = alterHeader "Transfer-Encoding" \case
+      Nothing -> Just "chunked"
+      Just existing -> Just (existing <> ", chunked")
+
+    serializeResponsePreamble :: HTTPVersion -> Status -> Headers -> ByteString
+    serializeResponsePreamble httpVersion status headers =
+      serializeVersion httpVersion
+        <> " "
+        <> serializeStatus status
+        <> "\r\n"
+        <> serializeHeaders headers
+        <> "\r\n"
+
+    serializeVersion :: HTTPVersion -> ByteString
+    serializeVersion (HTTPVersion major minor) = BSC.pack ("HTTP/" <> show major <> "." <> show minor)
+
+    serializeStatus :: Status -> ByteString
+    serializeStatus (Status code message) = BSC.pack (show code) <> " " <> message
+
+    serializeHeaders :: Headers -> ByteString
+    serializeHeaders = foldMap serializeHeader . toList
+
+    serializeHeader :: HeaderField -> ByteString
+    serializeHeader (HeaderField (HeaderFieldName name) content) = name <> ": " <> content <> "\r\n"
+
+    encodeChunks :: Pipe ByteString ByteString m ()
+    encodeChunks = do
+      input <- receive
+      case input of
+        Nothing -> send finalChunk
+        Just bytes -> do
+          when (BSC.length bytes > 0) do
+            send (encodeChunk bytes)
+          encodeChunks
+
+    finalChunk :: ByteString
+    finalChunk = "0\r\n\r\n"
+
+    encodeChunk :: ByteString -> ByteString
+    encodeChunk bytes = BSC.pack (showHex (BSC.length bytes) "\r\n") <> bytes <> "\r\n"
+
+type Handler input output m result =
+  Request -> Consumer input m (Response (Pipe input output m result))
+
+handleRequest ::
+  Monad m =>
+  Handler ByteString ByteString m () ->
+  Request ->
+  Pipe ByteString ByteString m ()
+handleRequest handler request =
+  subInput (requestBody request.headers) (join . flush) do
+    when (findHeader "Expect" request.headers == Just "100-continue") do
+      send "HTTP/1.1 100 Continue\r\n\r\n"
+    sendResponse =<< handler request
+
+response400 :: Monad m => Response (Pipe input output m ())
+response400 = Response (HTTPVersion 1 1) status400 [] (pure ())
+
+handleConnection ::
+  forall m.
+  Monad m =>
+  Handler ByteString ByteString m () ->
+  Stream ByteString m () ->
+  Stream ByteString m ()
+handleConnection handler = loop
+  where
+    loop :: Stream ByteString m () -> Stream ByteString m ()
+    loop stream = do
+      step <- lift (next stream)
+      case step of
+        Left _ -> pure ()
+        Right (bytes, rest) -> do
+          loop =<< do
+            (result, unconsumed) <- lift (Stream.Attoparsec.parse requestParser (yield bytes *> rest))
+            case result of
+              Left _e -> execPipe (sendResponse response400) (pure ())
+              Right request -> execPipe (handleRequest handler request) unconsumed
