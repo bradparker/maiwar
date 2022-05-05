@@ -16,6 +16,7 @@
 
 module Maiwar.Network.HTTP where
 
+import Control.Applicative (empty)
 import Control.Monad (join, when, (<=<))
 import Control.Monad.Trans (lift)
 import Data.Attoparsec.ByteString (Parser)
@@ -26,7 +27,8 @@ import qualified Data.Char as Char
 import qualified Data.List as List
 import Data.Maybe (listToMaybe)
 import GHC.Exts (IsList (fromList, toList, type Item), IsString (fromString))
-import Maiwar.Pipe (Consumer, Pipe, compose, execPipe, receive, send, subInput)
+import Maiwar.Pipe (Consumer, Pipe, execPipe, receive, send, subInput, (>->))
+import qualified Maiwar.Pipe as Pipe
 import Maiwar.Stream (Stream, flush, next, yield)
 import qualified Maiwar.Stream.Attoparsec.ByteString as Stream.Attoparsec
 import qualified Maiwar.Stream.ByteString as Stream.ByteString
@@ -172,7 +174,7 @@ headerFieldContentParser =
             Nothing -> pure ()
             Just b ->
               if Attoparsec.inClass " \t" b
-                then fail "whitespace continue"
+                then empty
                 else pure ()
       )
 
@@ -231,26 +233,51 @@ chunkedBody stream = do
         then pure (Stream.ByteString.drop 2 rest)
         else chunkedBody . Stream.ByteString.drop 2 =<< Stream.ByteString.splitAt size rest
 
-sendResponse :: forall m. Monad m => Response (Pipe ByteString ByteString m ()) -> Pipe ByteString ByteString m ()
-sendResponse response = (`compose` response.body) do
-  input <- receive
-  case input of
-    Nothing -> do
-      send
-        ( serializeResponsePreamble
-            response.httpVersion
-            response.status
-            (response.headers <> ["Content-Length" =: "0"])
-        )
-    Just bytes -> do
-      send
-        ( serializeResponsePreamble
-            response.httpVersion
-            response.status
-            (addChunkedEncoding response.headers)
-        )
-      send (encodeChunk bytes)
-      encodeChunks
+-- | Chunk-encode stream of ByteStrings
+--
+-- >>> import Maiwar.Pipe (evalPipe)
+-- >>> import qualified Maiwar.Stream as Stream
+-- >>> Stream.run (Stream.traverse print (evalPipe encodeChunks (yield "Hey" *> yield "There")))
+-- "3\r\nHey\r\n"
+-- "5\r\nThere\r\n"
+-- "0\r\n\r\n"
+encodeChunks :: forall m. Monad m => Pipe ByteString ByteString m ()
+encodeChunks =
+  Pipe.filter (not . BSC.null) >-> do
+    Pipe.map encodeChunk
+    send finalChunk
+  where
+    finalChunk :: ByteString
+    finalChunk = "0\r\n\r\n"
+
+encodeChunk :: ByteString -> ByteString
+encodeChunk bytes = BSC.pack (showHex (BSC.length bytes) "\r\n") <> bytes <> "\r\n"
+
+sendResponse ::
+  forall m.
+  Monad m =>
+  Response (Pipe ByteString ByteString m ()) ->
+  Pipe ByteString ByteString m ()
+sendResponse response =
+  response.body >-> do
+    input <- receive
+    case input of
+      Nothing -> do
+        send
+          ( serializeResponsePreamble
+              response.httpVersion
+              response.status
+              (response.headers <> ["Content-Length" =: "0"])
+          )
+      Just bytes -> do
+        send
+          ( serializeResponsePreamble
+              response.httpVersion
+              response.status
+              (addChunkedEncoding response.headers)
+          )
+        send (encodeChunk bytes)
+        encodeChunks
   where
     addChunkedEncoding :: Headers -> Headers
     addChunkedEncoding = alterHeader "Transfer-Encoding" \case
@@ -277,22 +304,6 @@ sendResponse response = (`compose` response.body) do
 
     serializeHeader :: HeaderField -> ByteString
     serializeHeader (HeaderField (HeaderFieldName name) content) = name <> ": " <> content <> "\r\n"
-
-    encodeChunks :: Pipe ByteString ByteString m ()
-    encodeChunks = do
-      input <- receive
-      case input of
-        Nothing -> send finalChunk
-        Just bytes -> do
-          when (BSC.length bytes > 0) do
-            send (encodeChunk bytes)
-          encodeChunks
-
-    finalChunk :: ByteString
-    finalChunk = "0\r\n\r\n"
-
-    encodeChunk :: ByteString -> ByteString
-    encodeChunk bytes = BSC.pack (showHex (BSC.length bytes) "\r\n") <> bytes <> "\r\n"
 
 type Handler input output m result =
   Request -> Consumer input m (Response (Pipe input output m result))
