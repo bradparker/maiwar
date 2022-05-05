@@ -6,14 +6,68 @@
 
 module Maiwar.Pipe where
 
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (StateT (StateT, runStateT))
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Data.Bifunctor (first)
 import Maiwar.Stream (Stream (Stream), next, run, yield)
+import Prelude hiding (filter, map)
 
 newtype Pipe i o m a
   = Pipe (forall x. StateT (Stream i m x) (Stream o m) a)
+
+type Consumer i m a = forall x. Pipe i x m a
+
+-- ------------
+-- Introduction
+-- ------------
+
+-- | Receive input from upstream
+-- If the input stream is exhausted, `Nothing` is returned.
+receive :: forall i o m. Monad m => Pipe i o m (Maybe i)
+receive =
+  Pipe
+    ( StateT \input -> Stream do
+        step <- next input
+        case step of
+          Left a -> pure (Left (Nothing, pure a))
+          Right (i, rest) -> pure (Left (Just i, rest))
+    )
+
+-- | Send output down stream
+send :: forall i o m. Monad m => o -> Pipe i o m ()
+send o = Pipe (lift (yield o))
+
+-- ------------
+-- Elimination
+-- ------------
+
+-- | Run a pipe, returning both its result and any unconsumed input
+runPipe ::
+  forall i o m a b.
+  Pipe i o m b ->
+  Stream i m a ->
+  Stream o m (b, Stream i m a)
+runPipe (Pipe s) = runStateT s
+
+-- | Run a pipe, ignoring its result and returning any unconsumed input
+execPipe ::
+  forall i o m a b.
+  Functor m =>
+  Pipe i o m b ->
+  Stream i m a ->
+  Stream o m (Stream i m a)
+execPipe p s = snd <$> runPipe p s
+
+-- | Run a pipe, returning its result and ignoring any unconsumed input
+evalPipe ::
+  forall i o m a b.
+  Functor m =>
+  Pipe i o m b ->
+  Stream i m a ->
+  Stream o m b
+evalPipe p s = fst <$> runPipe p s
 
 instance forall i o m. Functor m => Functor (Pipe i o m) where
   fmap :: forall a b. (a -> b) -> Pipe i o m a -> Pipe i o m b
@@ -45,35 +99,12 @@ instance forall i o m. MonadIO m => MonadIO (Pipe i o m) where
   liftIO :: forall a. IO a -> Pipe i o m a
   liftIO = lift . liftIO
 
-runPipe ::
-  forall i o m a b.
-  Pipe i o m b ->
-  Stream i m a ->
-  Stream o m (b, Stream i m a)
-runPipe (Pipe s) = runStateT s
-
-execPipe ::
-  forall i o m a b.
-  Functor m =>
-  Pipe i o m b ->
-  Stream i m a ->
-  Stream o m (Stream i m a)
-execPipe p s = fmap snd (runPipe p s)
-
-receive :: forall i o m. Monad m => Pipe i o m (Maybe i)
-receive = Pipe $ StateT \input -> Stream do
-  step <- next input
-  case step of
-    Left a -> pure (Left (Nothing, pure a))
-    Right (i, rest) -> pure (Left (Just i, rest))
-
-send :: forall i o m. Monad m => o -> Pipe i o m ()
-send o = Pipe (lift (yield o))
+-- ------------------
+-- Pipe composition
+-- ------------------
 
 -- | Compose
---
--- >>> import Maiwar.Stream (for)
--- >>> import Data.Functor (void)
+-- >>> import qualified Maiwar.Stream as Stream
 -- >>> import Control.Monad (replicateM_, forever)
 -- >>> :{
 --   pipe :: forall m a b. Monad m => (a -> b) -> Pipe a b m ()
@@ -88,7 +119,7 @@ send o = Pipe (lift (yield o))
 -- >>> b = replicateM_ 6 (pipe (* 2)) *> pure 'B'
 -- >>> c = replicateM_ 7 (pipe (+ 1)) *> pure 'C'
 -- >>> d = a `compose` (b `compose` c)
--- >>> fst <$> run (for (runPipe d (forever (yield 3))) (liftIO . print))
+-- >>> run (Stream.traverse print (evalPipe d (forever (yield 3))))
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
@@ -96,7 +127,7 @@ send o = Pipe (lift (yield o))
 -- "aaaaaaaa"
 -- 'A'
 -- >>> e = (a `compose` b) `compose` c
--- >>> fst <$> run (for (runPipe e (forever (yield 3))) (liftIO . print))
+-- >>> run (Stream.traverse print (evalPipe e (forever (yield 3))))
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
@@ -104,7 +135,7 @@ send o = Pipe (lift (yield o))
 -- "aaaaaaaa"
 -- 'A'
 -- >>> f = b `compose` c
--- >>> fst <$> run (for (runPipe f (forever (yield 3))) (liftIO . print))
+-- >>> run (Stream.traverse print (evalPipe f (forever (yield 3))))
 -- 8
 -- 8
 -- 8
@@ -122,7 +153,21 @@ compose pipeA pipeB =
         )
     )
 
-type Consumer i m a = forall x. Pipe i x m a
+-- | A composition operator
+-- Nicked from Pipes (https://hackage.haskell.org/package/pipes-4.3.16/docs/Pipes.html#v:-60--45--60-)
+(<-<) :: forall m a b c r s. Monad m => Pipe b c m r -> Pipe a b m s -> Pipe a c m r
+(<-<) = compose
+
+infixr 1 <-<
+
+(>->) :: forall m a b c r s. Monad m => Pipe a b m s -> Pipe b c m r -> Pipe a c m r
+(>->) = flip compose
+
+infixr 1 >->
+
+-- ---------
+-- Utilities
+-- ---------
 
 subState ::
   forall m s t a.
@@ -133,6 +178,7 @@ subState ::
   StateT s m a
 subState i o st = StateT (fmap (fmap o) . runStateT st . i)
 
+-- | Transform the input stream over which a pipe operates
 subInput ::
   forall i o m n a.
   Monad m =>
@@ -141,3 +187,37 @@ subInput ::
   Pipe i o m a ->
   Pipe i o m a
 subInput i o (Pipe b) = Pipe (subState i o b)
+
+-- -------------------
+-- Pipes as operations
+-- -------------------
+
+-- | Filter
+filter :: Monad m => (a -> Bool) -> Pipe a a m ()
+filter p = go
+  where
+    go = do
+      input <- receive
+      case input of
+        Nothing -> pure ()
+        Just a -> do
+          when (p a) do
+            send a
+          go
+
+-- | Map
+-- >>> import qualified Maiwar.Stream as Stream
+-- >>> Stream.run (Stream.traverse print (evalPipe (map (+ 1) *> send 4) (yield 1 *> yield 2)))
+-- 2
+-- 3
+-- 4
+map :: forall a b m. Monad m => (a -> b) -> Pipe a b m ()
+map f = go
+  where
+    go = do
+      input <- receive
+      case input of
+        Nothing -> pure ()
+        Just a -> do
+          send (f a)
+          go
