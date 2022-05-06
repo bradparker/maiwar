@@ -235,9 +235,10 @@ chunkedBody stream = do
 
 -- | Chunk-encode stream of ByteStrings
 --
--- >>> import Maiwar.Pipe (evalPipe)
+-- >>> import Maiwar.Pipe (evalPipe, (>-))
+-- >>> import qualified Maiwar.Pipe as Pipe
 -- >>> import qualified Maiwar.Stream as Stream
--- >>> Stream.run (Stream.traverse print (evalPipe encodeChunks (yield "Hey" *> yield "There")))
+-- >>> Stream.run (evalPipe (encodeChunks >- Pipe.print) (yield "Hey" *> yield "There"))
 -- "3\r\nHey\r\n"
 -- "5\r\nThere\r\n"
 -- "0\r\n\r\n"

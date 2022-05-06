@@ -12,12 +12,11 @@ import Control.Monad.State (StateT (StateT, runStateT))
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Data.Bifunctor (first)
 import Maiwar.Stream (Stream (Stream), next, run, yield)
-import Prelude hiding (filter, map)
+import qualified System.IO
+import Prelude hiding (filter, map, print)
 
 newtype Pipe i o m a
   = Pipe (forall x. StateT (Stream i m x) (Stream o m) a)
-
-type Consumer i m a = forall x. Pipe i x m a
 
 -- ------------
 -- Introduction
@@ -119,7 +118,7 @@ instance forall i o m. MonadIO m => MonadIO (Pipe i o m) where
 -- >>> b = replicateM_ 6 (pipe (* 2)) *> pure 'B'
 -- >>> c = replicateM_ 7 (pipe (+ 1)) *> pure 'C'
 -- >>> d = a `compose` (b `compose` c)
--- >>> run (Stream.traverse print (evalPipe d (forever (yield 3))))
+-- >>> run (evalPipe (d >- print) (forever (yield 3)))
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
@@ -127,7 +126,7 @@ instance forall i o m. MonadIO m => MonadIO (Pipe i o m) where
 -- "aaaaaaaa"
 -- 'A'
 -- >>> e = (a `compose` b) `compose` c
--- >>> run (Stream.traverse print (evalPipe e (forever (yield 3))))
+-- >>> run (evalPipe (e >- print) (forever (yield 3)))
 -- "aaaaaaaa"
 -- "aaaaaaaa"
 -- "aaaaaaaa"
@@ -135,7 +134,7 @@ instance forall i o m. MonadIO m => MonadIO (Pipe i o m) where
 -- "aaaaaaaa"
 -- 'A'
 -- >>> f = b `compose` c
--- >>> run (Stream.traverse print (evalPipe f (forever (yield 3))))
+-- >>> run (evalPipe (f >- print) (forever (yield 3)))
 -- 8
 -- 8
 -- 8
@@ -206,8 +205,7 @@ filter p = go
           go
 
 -- | Map
--- >>> import qualified Maiwar.Stream as Stream
--- >>> Stream.run (Stream.traverse print (evalPipe (map (+ 1) *> send 4) (yield 1 *> yield 2)))
+-- >>> run (evalPipe (map (+ 1) *> send 4 >- print) (yield 1 *> yield 2))
 -- 2
 -- 3
 -- 4
@@ -220,4 +218,36 @@ map f = go
         Nothing -> pure ()
         Just a -> do
           send (f a)
+          go
+
+-- ---------
+-- Consumers
+-- ---------
+
+type Consumer i m a = forall o. Pipe i o m a
+
+-- | Consume the items in a pipe, preserving its output
+consume :: forall a b m r s. Monad m => Pipe a b m r -> Consumer b m s -> Consumer a m r
+consume pipe consumer =
+  Pipe
+    ( StateT \input -> do
+        (_, s) <- runPipe consumer (runPipe pipe input)
+        lift (run s)
+    )
+
+(>-) :: forall a b m r s. Monad m => Pipe a b m r -> Consumer b m s -> Consumer a m r
+(>-) = consume
+
+infixr 1 >-
+
+-- | Consume input by printing it to the console
+print :: (Show a, MonadIO m) => Consumer a m ()
+print = go
+  where
+    go = do
+      input <- receive
+      case input of
+        Nothing -> pure ()
+        Just a -> do
+          liftIO (System.IO.print a)
           go
