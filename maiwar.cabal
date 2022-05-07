@@ -13,6 +13,7 @@ extra-source-files:
 
 library
     exposed-modules:  Maiwar.Pipe
+                      Maiwar.Pipe.Attoparsec.ByteString
                       Maiwar.Network.HTTP
                       Maiwar.Network.TCP
                       Maiwar.Stream

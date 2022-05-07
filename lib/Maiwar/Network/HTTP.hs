@@ -27,9 +27,10 @@ import qualified Data.Char as Char
 import qualified Data.List as List
 import Data.Maybe (listToMaybe)
 import GHC.Exts (IsList (fromList, toList, type Item), IsString (fromString))
-import Maiwar.Pipe (Consumer, Pipe, execPipe, receive, send, subInput, (>->))
+import Maiwar.Pipe (Consumer, Pipe, receive, send, subInput, (>->))
 import qualified Maiwar.Pipe as Pipe
-import Maiwar.Stream (Stream, flush, next, yield)
+import qualified Maiwar.Pipe.Attoparsec.ByteString as Pipe.Attoparsec
+import Maiwar.Stream (Stream, flush)
 import qualified Maiwar.Stream.Attoparsec.ByteString as Stream.Attoparsec
 import qualified Maiwar.Stream.ByteString as Stream.ByteString
 import Numeric (showHex)
@@ -238,7 +239,7 @@ chunkedBody stream = do
 -- >>> import Maiwar.Pipe (evalPipe, (>-))
 -- >>> import qualified Maiwar.Pipe as Pipe
 -- >>> import qualified Maiwar.Stream as Stream
--- >>> Stream.run (evalPipe (encodeChunks >- Pipe.print) (yield "Hey" *> yield "There"))
+-- >>> Stream.run (evalPipe (encodeChunks >- Pipe.print) (Stream.yield "Hey" *> Stream.yield "There"))
 -- "3\r\nHey\r\n"
 -- "5\r\nThere\r\n"
 -- "0\r\n\r\n"
@@ -254,6 +255,21 @@ encodeChunks =
 encodeChunk :: ByteString -> ByteString
 encodeChunk bytes = BSC.pack (showHex (BSC.length bytes) "\r\n") <> bytes <> "\r\n"
 
+-- | Convert a Response into a Pipe of ByteStrings
+-- Ready to receive from and send to a Socket or Context.
+--
+-- >>> import Maiwar.Pipe (evalPipe, (>-))
+-- >>> import qualified Maiwar.Pipe as Pipe
+-- >>> import qualified Maiwar.Stream as Stream
+-- >>> let emptyResponse = Response (HTTPVersion 1 1) status200 [] (pure ())
+-- >>> Stream.run (evalPipe (sendResponse emptyResponse >- Pipe.print) (Stream.yield "Hey" *> Stream.yield "There"))
+-- "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n"
+-- >>> let nonEmptyResponse = Response (HTTPVersion 1 1) status200 [] (Pipe.send "Hey" *> Pipe.send "There")
+-- >>> Stream.run (evalPipe (sendResponse nonEmptyResponse >- Pipe.print) (Stream.yield "Hey" *> Stream.yield "There"))
+-- "HTTP/1.1 200 OK\r\ntransfer-encoding: chunked\r\n\r\n"
+-- "3\r\nHey\r\n"
+-- "5\r\nThere\r\n"
+-- "0\r\n\r\n"
 sendResponse ::
   forall m.
   Monad m =>
@@ -327,18 +343,13 @@ handleConnection ::
   forall m.
   Monad m =>
   Handler ByteString ByteString m () ->
-  Stream ByteString m () ->
-  Stream ByteString m ()
-handleConnection handler = loop
+  Pipe ByteString ByteString m ()
+handleConnection handler = go
   where
-    loop :: Stream ByteString m () -> Stream ByteString m ()
-    loop stream = do
-      step <- lift (next stream)
-      case step of
-        Left _ -> pure ()
-        Right (bytes, rest) -> do
-          loop =<< do
-            (result, unconsumed) <- lift (Stream.Attoparsec.parse requestParser (yield bytes *> rest))
-            case result of
-              Left _e -> execPipe (sendResponse response400) (pure ())
-              Right request -> execPipe (handleRequest handler request) unconsumed
+    go = do
+      result <- Pipe.Attoparsec.parse requestParser
+      case result of
+        Left _e -> sendResponse response400
+        Right request -> do
+          handleRequest handler request
+          go

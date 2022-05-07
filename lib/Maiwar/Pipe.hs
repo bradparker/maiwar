@@ -8,7 +8,7 @@ module Maiwar.Pipe where
 
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (StateT (StateT, runStateT))
+import Control.Monad.State (StateT (StateT, runStateT), modify)
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Data.Bifunctor (first)
 import Maiwar.Stream (Stream (Stream), next, run, yield)
@@ -33,6 +33,10 @@ receive =
           Left a -> pure (Left (Nothing, pure a))
           Right (i, rest) -> pure (Left (Just i, rest))
     )
+
+-- | Replace received input
+replace :: forall i o m. Monad m => i -> Pipe i o m ()
+replace i = Pipe (modify (yield i *>))
 
 -- | Send output down stream
 send :: forall i o m. Monad m => o -> Pipe i o m ()
