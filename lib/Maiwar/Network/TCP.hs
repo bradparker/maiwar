@@ -6,10 +6,10 @@
 
 module Maiwar.Network.TCP where
 
-import Control.Exception.Safe (bracket, bracket_)
+import Control.Exception.Safe (bracket)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed.Safe (Managed, runManaged)
+import Control.Monad.Managed.Extra (Managed, runManaged)
 import Data.ByteString (ByteString)
 import Data.Functor (void)
 import Foreign.C (CInt)
@@ -21,24 +21,23 @@ import qualified Network.Simple.TCP as TCP
 import qualified Network.Socket as Socket
 import qualified System.Posix.Internals as System.Posix
 
-toSocket :: forall m r. MonadIO m => Socket -> Stream ByteString m r -> m r
+toSocket :: MonadIO m => Socket -> Stream ByteString m r -> m r
 toSocket socket = Stream.run . Stream.traverse (send socket)
 
-fromSocket :: forall m. MonadIO m => Int -> Socket -> Stream ByteString m ()
+fromSocket :: MonadIO m => Int -> Socket -> Stream ByteString m ()
 fromSocket size = Stream.unfold \socket -> do
   input <- liftIO (recv socket size)
   pure case input of
     Nothing -> Left ()
     Just bytes -> Right (bytes, socket)
 
-accept :: IO () -> IO () -> Socket -> Pipe ByteString ByteString Managed () -> IO ()
-accept before after socket connectionHandler =
+accept :: Socket -> Pipe ByteString ByteString Managed () -> IO ()
+accept socket connectionHandler =
   void
     ( TCP.acceptFork
         socket
         \(csocket, _) ->
-          bracket_ before after
-            . runManaged
+          runManaged
             . toSocket csocket
             . evalPipe connectionHandler
             . fromSocket 16384

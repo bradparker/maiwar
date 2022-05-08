@@ -8,6 +8,7 @@ module Maiwar.Pipe where
 
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Managed (Managed, MonadManaged (using))
 import Control.Monad.State (StateT (StateT, runStateT), modify)
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Data.Bifunctor (first)
@@ -101,6 +102,10 @@ instance forall i o. MonadTrans (Pipe i o) where
 instance forall i o m. MonadIO m => MonadIO (Pipe i o m) where
   liftIO :: forall a. IO a -> Pipe i o m a
   liftIO = lift . liftIO
+
+instance forall i o m. MonadManaged m => MonadManaged (Pipe i o m) where
+  using :: forall a. Managed a -> Pipe i o m a
+  using m = lift (using m)
 
 -- ------------------
 -- Pipe composition

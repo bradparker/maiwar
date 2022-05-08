@@ -6,9 +6,8 @@
 
 module Maiwar.Network.TCP.TLS where
 
-import Control.Exception.Safe (bracket_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed.Safe (Managed, runManaged)
+import Control.Monad.Managed.Extra (Managed, runManaged)
 import Data.ByteString (ByteString)
 import Data.Functor (void)
 import Maiwar.Pipe (Pipe, evalPipe)
@@ -30,19 +29,16 @@ fromContext = Stream.unfold \context -> do
 
 accept ::
   ServerParams ->
-  IO () ->
-  IO () ->
   Socket ->
   Pipe ByteString ByteString Managed () ->
   IO ()
-accept params before after socket connectionHandler =
+accept params socket connectionHandler =
   void
     ( TLS.acceptFork
         params
         socket
         \(context, _) ->
-          bracket_ before after
-            . runManaged
+          runManaged
             . toContext context
             . evalPipe connectionHandler
             . fromContext

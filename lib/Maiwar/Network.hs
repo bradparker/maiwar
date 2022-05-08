@@ -24,7 +24,7 @@ import Control.Concurrent.STM
 import Control.Exception (SomeException)
 import Control.Exception.Safe (catch)
 import Control.Monad (when)
-import Control.Monad.Managed (Managed)
+import Control.Monad.Managed.Extra (Managed, around)
 import Data.ByteString (ByteString)
 import Data.Functor (void)
 import Maiwar.Network.HTTP (Handler, handleConnection)
@@ -64,7 +64,10 @@ serve config handler = do
     whileM_
       shouldAccept
       ( catch
-          (accept onConnection afterConnection socket (handleConnection handler))
+          ( accept socket do
+              around onConnection afterConnection
+              handleConnection handler
+          )
           handleAcceptException
       )
   atomically do
