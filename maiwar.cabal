@@ -9,30 +9,36 @@ author:             Brad Parker
 maintainer:         hi@bradparker.com
 
 extra-source-files:
-    README.md
+  README.md
 
 library
-    exposed-modules:  Maiwar.Network
-                      Maiwar.Network.HTTP
-                      Maiwar.Network.TCP
-                      Maiwar.Network.TCP.TLS
-                      Maiwar.Pipe
-                      Maiwar.Pipe.Attoparsec.ByteString
-                      Maiwar.Stream
-                      Maiwar.Stream.Attoparsec.ByteString
-                      Maiwar.Stream.ByteString
-    build-depends:    base ^>=4.16.0.0,
-                      attoparsec,
-                      bytestring,
-                      exceptions,
-                      managed,
-                      mtl,
-                      network,
-                      network-simple,
-                      network-simple-tls,
-                      safe-exceptions,
-                      stm,
-                      transformers,
-                      unix,
-    hs-source-dirs:   lib
-    default-language: Haskell2010
+  exposed-modules:
+    Maiwar.CLI
+    Maiwar.Network
+    Maiwar.Network.HTTP
+    Maiwar.Network.TCP
+    Maiwar.Network.TCP.TLS
+    Maiwar.Pipe
+    Maiwar.Pipe.Attoparsec.ByteString
+    Maiwar.Stream
+    Maiwar.Stream.Attoparsec.ByteString
+    Maiwar.Stream.ByteString
+  build-depends:
+    base ^>=4.16.0.0,
+    optparse-applicative,
+    attoparsec,
+    bytestring,
+    exceptions,
+    managed,
+    mtl,
+    network,
+    network-simple,
+    network-simple-tls,
+    safe-exceptions,
+    stm,
+    transformers,
+    unix,
+  hs-source-dirs:
+    lib
+  default-language:
+    Haskell2010
