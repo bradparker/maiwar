@@ -83,8 +83,8 @@ tlsParams tlsOption = do
     Left e -> throwError (userError e)
     Right creds -> Network.Simple.TCP.TLS.newDefaultServerParams creds
 
-activatedSocketFDs :: MonadIO m => m (Maybe [CInt])
-activatedSocketFDs = runMaybeT $ do
+providedSocketFDs :: MonadIO m => m (Maybe [CInt])
+providedSocketFDs = runMaybeT $ do
   listenPid <- read <$> MaybeT (liftIO (getEnv "LISTEN_PID"))
   listenFDs <- read @CInt <$> MaybeT (liftIO (getEnv "LISTEN_FDS"))
   myPid <- liftIO getProcessID
@@ -94,9 +94,9 @@ activatedSocketFDs = runMaybeT $ do
     fdStart :: CInt
     fdStart = 3
 
-activatedSocketFD :: MonadIO m => m (Maybe CInt)
-activatedSocketFD = runMaybeT do
-  fds <- MaybeT activatedSocketFDs
+providedSocketFD :: MonadIO m => m (Maybe CInt)
+providedSocketFD = runMaybeT do
+  fds <- MaybeT providedSocketFDs
   guard (length fds == 1)
   MaybeT (pure (listToMaybe fds))
 
@@ -105,9 +105,9 @@ optionsToConfig options = do
   listen <- case options.listen of
     OwnSocket c -> pure (Maiwar.OwnSocket c)
     ProvidedSocket -> do
-      activatedSocketFDResult <- activatedSocketFD
-      case activatedSocketFDResult of
-        Nothing -> throwError (userError "No activated socket FD supplied")
+      providedSocketFDResult <- providedSocketFD
+      case providedSocketFDResult of
+        Nothing -> throwError (userError "No provided socket FD found")
         Just fd -> pure (Maiwar.ProvidedSocket (ProvidedSocketConfig fd))
   tls <- case options.tls of
     Nothing -> pure Nothing
