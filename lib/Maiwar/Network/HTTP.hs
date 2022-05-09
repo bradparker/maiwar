@@ -45,6 +45,9 @@ newtype RequestTarget = RequestTarget ByteString
 data HTTPVersion = HTTPVersion Int Int
   deriving (Show)
 
+http11 :: HTTPVersion
+http11 = HTTPVersion 1 1
+
 newtype Headers = Headers [HeaderField]
   deriving (Show, Semigroup)
 
@@ -120,11 +123,13 @@ status404 :: Status
 status404 = Status 404 "Not found"
 
 data Response body = Response
-  { httpVersion :: HTTPVersion,
-    status :: Status,
+  { status :: Status,
     headers :: Headers,
     body :: body
   }
+
+response400 :: Monad m => Response (Pipe input output m ())
+response400 = Response status400 [] (pure ())
 
 crlfParser :: Parser ByteString
 crlfParser = "\r\n"
@@ -282,14 +287,14 @@ sendResponse response =
       Nothing -> do
         send
           ( serializeResponsePreamble
-              response.httpVersion
+              http11
               response.status
               (response.headers <> ["Content-Length" =: "0"])
           )
       Just bytes -> do
         send
           ( serializeResponsePreamble
-              response.httpVersion
+              http11
               response.status
               (addChunkedEncoding response.headers)
           )
@@ -325,6 +330,9 @@ sendResponse response =
 type Handler input output m result =
   Request -> Consumer input m (Response (Pipe input output m result))
 
+respond :: forall m body. Applicative m => Status -> Headers -> body -> m (Response body)
+respond status headers = pure . Response status headers
+
 handleRequest ::
   Monad m =>
   Handler ByteString ByteString m () ->
@@ -335,9 +343,6 @@ handleRequest handler request =
     when (findHeader "Expect" request.headers == Just "100-continue") do
       send "HTTP/1.1 100 Continue\r\n\r\n"
     sendResponse =<< handler request
-
-response400 :: Monad m => Response (Pipe input output m ())
-response400 = Response (HTTPVersion 1 1) status400 [] (pure ())
 
 handleConnection ::
   forall m.

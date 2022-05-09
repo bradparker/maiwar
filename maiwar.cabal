@@ -14,8 +14,8 @@ extra-source-files:
 library
   exposed-modules:
     Control.Monad.Managed.Extra
+    Maiwar
     Maiwar.CLI
-    Maiwar.Network
     Maiwar.Network.HTTP
     Maiwar.Network.TCP
     Maiwar.Network.TCP.TLS
@@ -43,3 +43,16 @@ library
     lib
   default-language:
     Haskell2010
+
+executable example-echo
+  build-depends:
+    base ^>=4.16.0.0,
+    maiwar,
+  hs-source-dirs:
+    examples/echo
+  main-is:
+    Main.hs
+  default-language:
+    Haskell2010
+  ghc-options:
+    -fspecialise-aggressively -fexpose-all-unfoldings

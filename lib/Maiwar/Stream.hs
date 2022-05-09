@@ -67,10 +67,6 @@ run = fold \action -> do
     Left result -> pure result
     Right (_, rest) -> rest
 
--- | Empty a stream
-flush :: forall o m a. (Monad m) => Stream o m a -> Stream o m a
-flush = lift . run
-
 instance forall o m. (Functor m) => Functor (Stream o m) where
   fmap :: forall a b. (a -> b) -> Stream o m a -> Stream o m b
   fmap f = Stream . fmap (bimap f (fmap (fmap f))) . next
@@ -105,6 +101,10 @@ instance forall o m. (MonadIO m) => MonadIO (Stream o m) where
   liftIO :: forall a. IO a -> Stream o m a
   liftIO = lift . liftIO
 
+instance forall o m. MonadManaged m => MonadManaged (Stream o m) where
+  using :: forall a. Managed a -> Stream o m a
+  using = lift . using
+
 instance forall o e m. (MonadError e m) => MonadError e (Stream o m) where
   throwError :: e -> Stream f m a
   throwError = lift . throwError
@@ -112,13 +112,13 @@ instance forall o e m. (MonadError e m) => MonadError e (Stream o m) where
   catchError :: Stream f m a -> (e -> Stream f m a) -> Stream f m a
   catchError stream catcher = Stream (next stream `catchError` (next . catcher))
 
-instance forall o m. MonadManaged m => MonadManaged (Stream o m) where
-  using :: forall a. Managed a -> Stream o m a
-  using m = lift (using m)
-
 -- --------------------
 -- Transforming streams
 -- --------------------
+
+-- | Empty a stream
+flush :: forall o m a. (Monad m) => Stream o m a -> Stream o m a
+flush = lift . run
 
 traverse :: forall a b m r. Monad m => (a -> m b) -> Stream a m r -> Stream b m r
 traverse f = fold \action -> Stream do

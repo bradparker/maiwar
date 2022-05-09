@@ -17,14 +17,28 @@ import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.ByteString (ByteString)
 import Data.Maybe (listToMaybe)
 import Foreign.C (CInt)
-import Maiwar.Network (Config (Config), serve)
-import Maiwar.Network.HTTP (Handler)
-import Maiwar.Network.TCP (OwnSocketConfig (OwnSocketConfig))
-import qualified Maiwar.Network.TCP as TCP
+import Maiwar
+  ( Config (Config),
+    Handler,
+    OwnSocketConfig (OwnSocketConfig),
+    ProvidedSocketConfig (..),
+    serve,
+  )
+import qualified Maiwar
 import Network.Simple.TCP (HostPreference (Host))
 import Network.Simple.TCP.TLS (ServerParams)
 import qualified Network.Simple.TCP.TLS
-import Options.Applicative (Parser, auto, execParser, fullDesc, info, long, option, str, switch)
+import Options.Applicative
+  ( Parser,
+    auto,
+    execParser,
+    fullDesc,
+    info,
+    long,
+    option,
+    str,
+    switch,
+  )
 import System.Environment.Blank (getEnv)
 import System.Posix.Process (getProcessID)
 
@@ -89,12 +103,12 @@ activatedSocketFD = runMaybeT do
 optionsToConfig :: (MonadIO m, MonadError IOError m) => Options -> m Config
 optionsToConfig options = do
   listen <- case options.listen of
-    OwnSocket c -> pure (TCP.OwnSocket c)
+    OwnSocket c -> pure (Maiwar.OwnSocket c)
     ProvidedSocket -> do
       activatedSocketFDResult <- activatedSocketFD
       case activatedSocketFDResult of
         Nothing -> throwError (userError "No activated socket FD supplied")
-        Just fd -> pure (TCP.ProvidedSocket (TCP.ProvidedSocketConfig fd))
+        Just fd -> pure (Maiwar.ProvidedSocket (ProvidedSocketConfig fd))
   tls <- case options.tls of
     Nothing -> pure Nothing
     Just tlsOptions -> Just <$> tlsParams tlsOptions
