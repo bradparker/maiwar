@@ -23,6 +23,10 @@ newtype Pipe i o m a
 -- Introduction
 -- ------------
 
+-- | Construct a Pipe from a StateT-like function
+pipe :: forall i o m a. (forall x. Stream i m x -> Stream o m (a, Stream i m x)) -> Pipe i o m a
+pipe f = Pipe (StateT f)
+
 -- | Receive input from upstream
 -- If the input stream is exhausted, `Nothing` is returned.
 receive :: forall i o m. Monad m => Pipe i o m (Maybe i)
@@ -237,10 +241,10 @@ type Consumer i m a = forall o. Pipe i o m a
 
 -- | Consume the items in a pipe, preserving its output
 consume :: forall a b m r s. Monad m => Pipe a b m r -> Consumer b m s -> Consumer a m r
-consume pipe consumer =
+consume p consumer =
   Pipe
     ( StateT \input -> do
-        (_, s) <- runPipe consumer (runPipe pipe input)
+        (_, s) <- runPipe consumer (runPipe p input)
         lift (run s)
     )
 
