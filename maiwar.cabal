@@ -16,6 +16,7 @@ library
     Control.Monad.Managed.Extra
     Maiwar
     Maiwar.CLI
+    Maiwar.Handlers.Static
     Maiwar.Middleware.Static
     Maiwar.Middleware.Static.Base
     Maiwar.Middleware.Static.Etag
@@ -51,6 +52,20 @@ library
     lib
   default-language:
     Haskell2010
+
+executable maiwar
+  build-depends:
+    base ^>=4.16.0.0,
+    maiwar,
+    optparse-applicative,
+  hs-source-dirs:
+    app
+  main-is:
+    Main.hs
+  default-language:
+    Haskell2010
+  ghc-options:
+    -fspecialise-aggressively -fexpose-all-unfoldings
 
 executable example-echo
   build-depends:

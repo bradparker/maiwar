@@ -47,7 +47,7 @@ gzipped baseHandler request = runMaybeT do
     staticGzippedFilePath :: forall n. MonadIO n => FilePath -> n (Maybe FilePath)
     staticGzippedFilePath path = do
       let gzippedFilePath = path <> ".gz"
-      exists <- liftIO (Files.fileExist path)
+      exists <- liftIO (Files.fileExist gzippedFilePath)
       pure
         if exists
           then Just gzippedFilePath
