@@ -30,14 +30,13 @@ import Network.Simple.TCP.TLS (ServerParams)
 import qualified Network.Simple.TCP.TLS
 import Options.Applicative
   ( Parser,
-    auto,
     execParser,
+    flag',
     fullDesc,
     info,
     long,
     option,
     str,
-    switch,
   )
 import System.Environment.Blank (getEnv)
 import System.Posix.Process (getProcessID)
@@ -59,13 +58,13 @@ optionsParser :: Parser Options
 optionsParser =
   Options
     <$> optional tls
-    <*> (OwnSocket <$> ownSocket <|> ProvidedSocket <$ switch (long "socket-activated"))
+    <*> (OwnSocket <$> ownSocket <|> flag' ProvidedSocket (long "socket-activated"))
   where
     ownSocket :: Parser OwnSocketConfig
     ownSocket =
       OwnSocketConfig
-        <$> (Host <$> (option auto (long "host") <|> pure "127.0.0.1"))
-        <*> option auto (long "port")
+        <$> (Host <$> (option str (long "host") <|> pure "127.0.0.1"))
+        <*> option str (long "port")
 
     tls :: Parser TLSOption
     tls =
