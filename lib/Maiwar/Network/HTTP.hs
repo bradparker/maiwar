@@ -172,7 +172,7 @@ headerFieldNameParser = headerFieldName <$> Attoparsec.takeWhile (/= ':') <* ":"
 headerFieldContentParser :: Parser ByteString
 headerFieldContentParser =
   BSC.pack
-    <$> Attoparsec.manyTill
+    <$> Attoparsec.manyTill'
       Attoparsec.anyChar
       ( crlfParser *> do
           nextByte <- Attoparsec.peekChar
@@ -199,7 +199,7 @@ headerFieldParser =
 -- >>> Attoparsec.parseOnly headersParser "Host: example.com\r\nContent-type: application/json\r\n\r\n"
 -- Right (Headers [HeaderField {name = HeaderFieldName "host", value = "example.com"},HeaderField {name = HeaderFieldName "content-type", value = "application/json"}])
 headersParser :: Parser Headers
-headersParser = Headers <$> Attoparsec.manyTill headerFieldParser crlfParser
+headersParser = Headers <$> Attoparsec.manyTill' headerFieldParser crlfParser
 
 chunkSizeParser :: Parser Int
 chunkSizeParser = Attoparsec.hexadecimal <* crlfParser
