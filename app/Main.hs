@@ -7,6 +7,7 @@ import Control.Applicative ((<|>))
 import Maiwar (serve)
 import qualified Maiwar.CLI
 import Maiwar.Handlers.Static (static)
+import Maiwar.Middleware.Logged (logged)
 import Options.Applicative
   ( Parser,
     execParser,
@@ -16,6 +17,7 @@ import Options.Applicative
     option,
     str,
   )
+import System.IO (hSetBuffering, BufferMode (LineBuffering), stdout)
 
 optionsParser :: Parser (FilePath, Maiwar.CLI.Options)
 optionsParser =
@@ -25,6 +27,7 @@ optionsParser =
 
 main :: IO ()
 main = do
+  hSetBuffering stdout LineBuffering
   (directory, options) <- execParser (info optionsParser fullDesc)
   config <- Maiwar.CLI.optionsToConfig options
-  serve config (static directory)
+  serve config (logged (static directory))

@@ -17,6 +17,7 @@ library
     Maiwar
     Maiwar.CLI
     Maiwar.Handlers.Static
+    Maiwar.Middleware.Logged
     Maiwar.Middleware.Static
     Maiwar.Middleware.Static.Base
     Maiwar.Middleware.Static.Etag
@@ -46,6 +47,7 @@ library
     optparse-applicative,
     safe-exceptions,
     stm,
+    time,
     transformers,
     unix,
   hs-source-dirs:
