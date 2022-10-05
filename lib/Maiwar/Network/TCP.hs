@@ -33,7 +33,14 @@ import qualified Maiwar.Network.TCP.TLS as TLS
 import Maiwar.Pipe (Pipe, evalPipe)
 import Maiwar.Stream (Stream)
 import qualified Maiwar.Stream as Stream
-import Network.Simple.TCP (HostPreference, ServiceName, Socket, recv, send)
+import Network.Simple.TCP
+  ( HostPreference,
+    ServiceName,
+    SockAddr,
+    Socket,
+    recv,
+    send,
+  )
 import qualified Network.Simple.TCP as TCP
 import Network.Simple.TCP.TLS (ServerParams)
 import qualified Network.Socket as Socket
@@ -51,14 +58,14 @@ fromSocket size = Stream.unfold \socket -> do
     Nothing -> Left ()
     Just bytes -> Right (bytes, socket)
 
-acceptFork :: Socket -> Pipe ByteString ByteString Managed () -> IO ThreadId
+acceptFork :: Socket -> (SockAddr -> Pipe ByteString ByteString Managed ()) -> IO ThreadId
 acceptFork socket connectionHandler =
   TCP.acceptFork
     socket
-    \(csocket, _) ->
+    \(csocket, addr) ->
       runManaged
         . toSocket csocket
-        . evalPipe connectionHandler
+        . evalPipe (connectionHandler addr)
         . fromSocket 16384
         $ csocket
 
@@ -116,7 +123,7 @@ whileM_ predicate action = go
         action
         go
 
-serve :: Config -> Pipe ByteString ByteString Managed () -> IO ()
+serve :: Config -> (SockAddr -> Pipe ByteString ByteString Managed ()) -> IO ()
 serve config handler = do
   shutdown <- newEmptyTMVarIO @()
   connectionCount <- newTVarIO @Int 0
@@ -130,9 +137,9 @@ serve config handler = do
       shouldAccept
       ( catch
           ( void
-              ( accept socket do
+              ( accept socket \addr -> do
                   around onConnection afterConnection
-                  handler
+                  handler addr
               )
           )
           handleAcceptException

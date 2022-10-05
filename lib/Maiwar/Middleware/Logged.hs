@@ -49,7 +49,7 @@ logged handler request = do
   pure response
   where
     clientAddress :: ByteString
-    clientAddress = "-"
+    clientAddress = BSC.pack (show request.address)
 
     userIdentifier :: ByteString
     userIdentifier = "-"

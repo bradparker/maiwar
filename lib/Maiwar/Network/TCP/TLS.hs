@@ -1,7 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE NoFieldSelectors #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Maiwar.Network.TCP.TLS where
@@ -13,7 +11,7 @@ import Data.ByteString (ByteString)
 import Maiwar.Pipe (Pipe, evalPipe)
 import Maiwar.Stream (Stream)
 import qualified Maiwar.Stream as Stream
-import Network.Simple.TCP (Socket)
+import Network.Simple.TCP (Socket, SockAddr)
 import Network.Simple.TCP.TLS (Context, ServerParams, recv, send)
 import qualified Network.Simple.TCP.TLS as TLS
 
@@ -30,15 +28,15 @@ fromContext = Stream.unfold \context -> do
 acceptFork ::
   ServerParams ->
   Socket ->
-  Pipe ByteString ByteString Managed () ->
+  (SockAddr -> Pipe ByteString ByteString Managed ()) ->
   IO ThreadId
 acceptFork params socket connectionHandler =
   TLS.acceptFork
     params
     socket
-    \(context, _) ->
+    \(context, addr) ->
       runManaged
         . toContext context
-        . evalPipe connectionHandler
+        . evalPipe (connectionHandler addr)
         . fromContext
         $ context

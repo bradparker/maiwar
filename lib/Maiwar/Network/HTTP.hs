@@ -33,6 +33,7 @@ import qualified Maiwar.Pipe.Attoparsec.ByteString as Pipe.Attoparsec
 import Maiwar.Stream (Stream, flush)
 import qualified Maiwar.Stream.Attoparsec.ByteString as Stream.Attoparsec
 import qualified Maiwar.Stream.ByteString as Stream.ByteString
+import Network.Simple.TCP (SockAddr)
 import Numeric (showHex)
 import Text.Read (readMaybe)
 
@@ -103,7 +104,8 @@ data HeaderField = HeaderField
 (=:) = HeaderField
 
 data Request = Request
-  { method :: Method,
+  { address :: SockAddr,
+    method :: Method,
     target :: RequestTarget,
     httpVersion :: HTTPVersion,
     headers :: Headers
@@ -135,20 +137,21 @@ crlfParser :: Parser ByteString
 crlfParser = "\r\n"
 
 -- | Request parser
---
--- >>> Attoparsec.parseOnly requestParser "GET /posts HTTP/1.1\r\n\r\n"
--- Right (Request {method = Method "GET", target = RequestTarget "/posts", httpVersion = HTTPVersion 1 1, headers = Headers []})
--- >>> Attoparsec.parseOnly requestParser "GET /posts/getting-close-to-the-conceptual-metal HTTP/1.0\r\nAccept: text/html\r\n\r\n"
--- Right (Request {method = Method "GET", target = RequestTarget "/posts/getting-close-to-the-conceptual-metal", httpVersion = HTTPVersion 1 0, headers = Headers [HeaderField {name = HeaderFieldName "accept", value = "text/html"}]})
--- >>> Attoparsec.parseOnly requestParser "GET /hello.txt HTTP/1.1\r\nUser-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3\r\nHost: www.example.com\r\nAccept-Language: en, mi\r\n\r\n"
--- Right (Request {method = Method "GET", target = RequestTarget "/hello.txt", httpVersion = HTTPVersion 1 1, headers = Headers [HeaderField {name = HeaderFieldName "user-agent", value = "curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3"},HeaderField {name = HeaderFieldName "host", value = "www.example.com"},HeaderField {name = HeaderFieldName "accept-language", value = "en, mi"}]})
--- >>> Attoparsec.eitherResult (Attoparsec.feed (Attoparsec.parse requestParser "POST /foobar HTTP/1.1\r\nHost: localhost:5000\r\nUser-Agent: curl/7.74.0\r\nAccept: */*\r\nContent-Length: 2\r") "\nContent-Type: application/x-www-form-urlencoded\r\n\r\n")
--- Right (Request {method = Method "POST", target = RequestTarget "/foobar", httpVersion = HTTPVersion 1 1, headers = Headers [HeaderField {name = HeaderFieldName "host", value = "localhost:5000"},HeaderField {name = HeaderFieldName "user-agent", value = "curl/7.74.0"},HeaderField {name = HeaderFieldName "accept", value = "*/*"},HeaderField {name = HeaderFieldName "content-length", value = "2"},HeaderField {name = HeaderFieldName "content-type", value = "application/x-www-form-urlencoded"}]})
--- >>> Attoparsec.parseOnly requestParser "GET /hello HTTP/1.1\r\nHost: localhost:8080\r\nUser-Agent: curl/7.74.0\r\nAccept: */*\r\n\r\n"
--- Right (Request {method = Method "GET", target = RequestTarget "/hello", httpVersion = HTTPVersion 1 1, headers = Headers [HeaderField {name = HeaderFieldName "host", value = "localhost:8080"},HeaderField {name = HeaderFieldName "user-agent", value = "curl/7.74.0"},HeaderField {name = HeaderFieldName "accept", value = "*/*"}]})
-requestParser :: Parser Request
-requestParser =
-  Request
+-- >>> import Network.Socket (SockAddr (SockAddrUnix))
+-- >>> address = SockAddrUnix "127.0.0.1"
+-- >>> Attoparsec.parseOnly (requestParser address) "GET /posts HTTP/1.1\r\n\r\n"
+-- Right (Request {address = 127.0.0.1, method = Method "GET", target = RequestTarget "/posts", httpVersion = HTTPVersion 1 1, headers = Headers []})
+-- >>> Attoparsec.parseOnly (requestParser address) "GET /posts/getting-close-to-the-conceptual-metal HTTP/1.0\r\nAccept: text/html\r\n\r\n"
+-- Right (Request {address = 127.0.0.1, method = Method "GET", target = RequestTarget "/posts/getting-close-to-the-conceptual-metal", httpVersion = HTTPVersion 1 0, headers = Headers [HeaderField {name = HeaderFieldName "accept", value = "text/html"}]})
+-- >>> Attoparsec.parseOnly (requestParser address) "GET /hello.txt HTTP/1.1\r\nUser-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3\r\nHost: www.example.com\r\nAccept-Language: en, mi\r\n\r\n"
+-- Right (Request {address = 127.0.0.1, method = Method "GET", target = RequestTarget "/hello.txt", httpVersion = HTTPVersion 1 1, headers = Headers [HeaderField {name = HeaderFieldName "user-agent", value = "curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3"},HeaderField {name = HeaderFieldName "host", value = "www.example.com"},HeaderField {name = HeaderFieldName "accept-language", value = "en, mi"}]})
+-- >>> Attoparsec.eitherResult (Attoparsec.feed (Attoparsec.parse (requestParser address) "POST /foobar HTTP/1.1\r\nHost: localhost:5000\r\nUser-Agent: curl/7.74.0\r\nAccept: */*\r\nContent-Length: 2\r") "\nContent-Type: application/x-www-form-urlencoded\r\n\r\n")
+-- Right (Request {address = 127.0.0.1, method = Method "POST", target = RequestTarget "/foobar", httpVersion = HTTPVersion 1 1, headers = Headers [HeaderField {name = HeaderFieldName "host", value = "localhost:5000"},HeaderField {name = HeaderFieldName "user-agent", value = "curl/7.74.0"},HeaderField {name = HeaderFieldName "accept", value = "*/*"},HeaderField {name = HeaderFieldName "content-length", value = "2"},HeaderField {name = HeaderFieldName "content-type", value = "application/x-www-form-urlencoded"}]})
+-- >>> Attoparsec.parseOnly (requestParser address) "GET /hello HTTP/1.1\r\nHost: localhost:8080\r\nUser-Agent: curl/7.74.0\r\nAccept: */*\r\n\r\n"
+-- Right (Request {address = 127.0.0.1, method = Method "GET", target = RequestTarget "/hello", httpVersion = HTTPVersion 1 1, headers = Headers [HeaderField {name = HeaderFieldName "host", value = "localhost:8080"},HeaderField {name = HeaderFieldName "user-agent", value = "curl/7.74.0"},HeaderField {name = HeaderFieldName "accept", value = "*/*"}]})
+requestParser :: SockAddr -> Parser Request
+requestParser addr =
+  Request addr
     <$> (Method <$> Attoparsec.takeWhile (/= ' ') <* " ")
     <*> (RequestTarget <$> Attoparsec.takeWhile (/= ' ') <* " ")
     <*> (HTTPVersion <$> ("HTTP/" *> digitParser) <*> (Attoparsec.char '.' *> digitParser))
@@ -178,10 +181,7 @@ headerFieldContentParser =
           nextByte <- Attoparsec.peekChar
           case nextByte of
             Nothing -> pure ()
-            Just b ->
-              if Attoparsec.inClass " \t" b
-                then empty
-                else pure ()
+            Just b -> when (Attoparsec.inClass " \t" b) empty
       )
 
 -- | Header field parser
@@ -348,11 +348,12 @@ handleConnection ::
   forall m.
   Monad m =>
   Handler ByteString ByteString m () ->
+  SockAddr ->
   Pipe ByteString ByteString m ()
-handleConnection handler = go
+handleConnection handler addr = go
   where
     go = do
-      result <- Pipe.Attoparsec.parse requestParser
+      result <- Pipe.Attoparsec.parse (requestParser addr)
       case result of
         Left _e -> sendResponse response400
         Right request -> do
