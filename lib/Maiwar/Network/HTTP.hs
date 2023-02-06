@@ -117,10 +117,13 @@ status200 :: Status
 status200 = Status 200 "OK"
 
 status400 :: Status
-status400 = Status 400 "Bad request"
+status400 = Status 400 "Bad Request"
 
 status404 :: Status
-status404 = Status 404 "Not found"
+status404 = Status 404 "Not Found"
+
+status405 :: Status
+status405 = Status 405 "Method Not Allowed"
 
 data Response body = Response
   { status :: Status,

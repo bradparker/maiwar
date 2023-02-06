@@ -9,10 +9,10 @@ module Maiwar.Middleware.Static where
 
 import Control.Monad.Managed.Extra (MonadManaged)
 import Data.ByteString (ByteString)
+import Maiwar.Handler (Handler, Method (Method), Request (method), Response (body))
 import Maiwar.Middleware.Static.Base (baseHandler)
 import Maiwar.Middleware.Static.Etag (etagged)
 import Maiwar.Middleware.Static.Gzip (gzipped)
-import Maiwar.Handler (Handler, Method (Method), Request (method))
 
 static ::
   forall input m.
@@ -29,4 +29,9 @@ static directory fallback =
             case result of
               Nothing -> fallback request
               Just (_, response) -> pure response
+          Method "HEAD" -> do
+            result <- handler request
+            case result of
+              Nothing -> fallback request
+              Just (_, response) -> pure response {body = pure ()}
           _ -> fallback request
