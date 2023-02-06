@@ -10,7 +10,8 @@ module Maiwar.Handlers.Static (static) where
 import Control.Monad.Managed.Extra (MonadManaged)
 import Data.ByteString (ByteString)
 import qualified Maiwar.Middleware.Static as Middleware
-import Maiwar.Network.HTTP (Handler, respond, status404, (=:))
+import Maiwar.Handler (Handler, respond)
+import Maiwar.Network.HTTP (status404, (=:))
 import Maiwar.Pipe.Managed (sendFile)
 import System.FilePath ((</>))
 

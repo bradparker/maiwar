@@ -10,16 +10,16 @@ module Maiwar.Middleware.Logged where
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BSC
-import Data.Time (getCurrentTime, UTCTime)
+import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Format.ISO8601 (iso8601Show)
-import Maiwar.Network.HTTP
-  ( HTTPVersion (HTTPVersion),
-    Handler,
+import Maiwar.Handler
+  ( Handler,
     Method (Method),
+    HTTPVersion (HTTPVersion),
     Request (..),
-    Response(..),
-    Status(Status),
     RequestTarget (RequestTarget),
+    Response (..),
+    Status (Status),
   )
 
 logged ::

@@ -14,15 +14,13 @@ import Control.Monad.Managed.Extra (MonadManaged)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BSC
-import Maiwar.Middleware.Static.Base (StaticHandler)
-import Maiwar.Network.HTTP
-  ( Headers,
-    Request (headers),
+import Maiwar.Handler
+  ( Request (headers),
     Response (Response, body, headers),
     Status (Status),
-    alterHeader,
-    findHeader,
   )
+import Maiwar.Middleware.Static.Base (StaticHandler)
+import Maiwar.Network.HTTP (Headers, alterHeader, findHeader)
 import qualified System.Posix.Files as Files
 
 etagged ::

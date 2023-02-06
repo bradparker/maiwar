@@ -16,6 +16,7 @@ library
     Control.Monad.Managed.Extra
     Maiwar
     Maiwar.CLI
+    Maiwar.Handler
     Maiwar.Handlers.Static
     Maiwar.Middleware.Logged
     Maiwar.Middleware.Static

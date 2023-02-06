@@ -12,11 +12,10 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Managed.Extra (MonadManaged)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import qualified Data.ByteString.Char8 as BSC
+import Maiwar.Handler (Request (headers), Response (body, headers))
 import Maiwar.Middleware.Static.Base (StaticHandler)
 import Maiwar.Network.HTTP
   ( Headers,
-    Request (headers),
-    Response (body, headers),
     alterHeader,
     findHeader,
   )

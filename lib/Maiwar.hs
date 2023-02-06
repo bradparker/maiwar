@@ -16,7 +16,7 @@ where
 
 import Control.Monad.Managed.Extra (Managed)
 import Data.ByteString (ByteString)
-import Maiwar.Network.HTTP (Handler, handleConnection, respond, status200)
+import Maiwar.Handler (Handler, handleConnection, respond, status200)
 import Maiwar.Network.TCP
   ( Config (..),
     ListeningConfig (..),

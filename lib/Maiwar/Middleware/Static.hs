@@ -12,7 +12,7 @@ import Data.ByteString (ByteString)
 import Maiwar.Middleware.Static.Base (baseHandler)
 import Maiwar.Middleware.Static.Etag (etagged)
 import Maiwar.Middleware.Static.Gzip (gzipped)
-import Maiwar.Network.HTTP (Handler, Method (Method), Request (method))
+import Maiwar.Handler (Handler, Method (Method), Request (method))
 
 static ::
   forall input m.

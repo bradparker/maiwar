@@ -6,7 +6,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module Maiwar.Middleware.Static.Base (baseHandler, StaticHandler) where
+module Maiwar.Middleware.Static.Base
+  ( baseHandler,
+    StaticHandler,
+  )
+where
 
 import Control.Monad.Error.Class (catchError, throwError)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -17,14 +21,13 @@ import qualified Data.ByteString.Char8 as BSC
 import Data.Map (Map)
 import qualified Data.Map as Map
 import GHC.IO.Exception (IOErrorType (NoSuchThing), IOException (ioe_type))
-import Maiwar.Network.HTTP
-  ( Headers,
-    Request (target),
+import Maiwar.Handler
+  ( Request (target),
     RequestTarget (RequestTarget),
     Response (Response),
-    alterHeader,
     status200,
   )
+import Maiwar.Network.HTTP (Headers, alterHeader)
 import Maiwar.Pipe (Consumer, Pipe)
 import Maiwar.Pipe.Managed (sendFile)
 import System.FilePath ((</>))
