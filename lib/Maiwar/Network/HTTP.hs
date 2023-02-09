@@ -259,6 +259,27 @@ encodeChunks =
 encodeChunk :: ByteString -> ByteString
 encodeChunk bytes = BSC.pack (showHex (BSC.length bytes) "\r\n") <> bytes <> "\r\n"
 
+serializeResponsePreamble :: HTTPVersion -> Status -> Headers -> ByteString
+serializeResponsePreamble httpVersion status headers =
+  serializeVersion httpVersion
+    <> " "
+    <> serializeStatus status
+    <> "\r\n"
+    <> serializeHeaders headers
+    <> "\r\n"
+
+serializeVersion :: HTTPVersion -> ByteString
+serializeVersion (HTTPVersion major minor) = BSC.pack ("HTTP/" <> show major <> "." <> show minor)
+
+serializeStatus :: Status -> ByteString
+serializeStatus (Status code message) = BSC.pack (show code) <> " " <> message
+
+serializeHeaders :: Headers -> ByteString
+serializeHeaders = foldMap serializeHeader . toList
+
+serializeHeader :: HeaderField -> ByteString
+serializeHeader (HeaderField (HeaderFieldName name) content) = name <> ": " <> content <> "\r\n"
+
 -- | Convert a Response into a Pipe of ByteStrings
 -- Ready to receive from and send to a Socket or Context.
 --
@@ -274,12 +295,12 @@ encodeChunk bytes = BSC.pack (showHex (BSC.length bytes) "\r\n") <> bytes <> "\r
 -- "3\r\nHey\r\n"
 -- "5\r\nThere\r\n"
 -- "0\r\n\r\n"
-sendResponse ::
+sendResponseChunked ::
   forall m.
   Monad m =>
   Response (Pipe ByteString ByteString m ()) ->
   Pipe ByteString ByteString m ()
-sendResponse response =
+sendResponseChunked response =
   response.body >-> do
     input <- receive
     case input of
@@ -305,26 +326,35 @@ sendResponse response =
       Nothing -> Just "chunked"
       Just existing -> Just (existing <> ", chunked")
 
-    serializeResponsePreamble :: HTTPVersion -> Status -> Headers -> ByteString
-    serializeResponsePreamble httpVersion status headers =
-      serializeVersion httpVersion
-        <> " "
-        <> serializeStatus status
-        <> "\r\n"
-        <> serializeHeaders headers
-        <> "\r\n"
+sendResponseBuffered ::
+  forall m.
+  Monad m =>
+  Response (Pipe ByteString ByteString m ()) ->
+  Pipe ByteString ByteString m ()
+sendResponseBuffered response =
+  response.body >-> do
+    body <- Pipe.fold
+    send
+      ( serializeResponsePreamble
+          http11
+          response.status
+          ( response.headers
+              <> [ "Content-Length" =: BSC.pack (show (BSC.length body))
+                 ]
+          )
+      )
+    send body
 
-    serializeVersion :: HTTPVersion -> ByteString
-    serializeVersion (HTTPVersion major minor) = BSC.pack ("HTTP/" <> show major <> "." <> show minor)
-
-    serializeStatus :: Status -> ByteString
-    serializeStatus (Status code message) = BSC.pack (show code) <> " " <> message
-
-    serializeHeaders :: Headers -> ByteString
-    serializeHeaders = foldMap serializeHeader . toList
-
-    serializeHeader :: HeaderField -> ByteString
-    serializeHeader (HeaderField (HeaderFieldName name) content) = name <> ": " <> content <> "\r\n"
+sendResponse ::
+  forall m.
+  Monad m =>
+  HTTPVersion ->
+  Response (Pipe ByteString ByteString m ()) ->
+  Pipe ByteString ByteString m ()
+sendResponse version =
+  case version of
+    HTTPVersion 1 0 -> sendResponseBuffered
+    _ -> sendResponseChunked
 
 type Handler input output m result =
   Request -> Consumer input m (Response (Pipe input output m result))
@@ -338,7 +368,7 @@ handleRequest handler request =
   subInput (requestBody request.headers) (join . flush) do
     when (findHeader "Expect" request.headers == Just "100-continue") do
       send "HTTP/1.1 100 Continue\r\n\r\n"
-    sendResponse =<< handler request
+    sendResponse request.httpVersion =<< handler request
 
 handleConnection ::
   forall m.
@@ -350,7 +380,7 @@ handleConnection handler = go
     go = do
       result <- Pipe.Attoparsec.parse requestParser
       case result of
-        Left _e -> sendResponse response400
+        Left _e -> sendResponse (HTTPVersion 1 1) response400
         Right request -> do
           handleRequest handler request
           go

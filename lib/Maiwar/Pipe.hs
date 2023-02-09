@@ -15,6 +15,7 @@ import Data.Bifunctor (first)
 import Maiwar.Stream (Stream (Stream), next, run, yield)
 import qualified System.IO
 import Prelude hiding (filter, map, print)
+import Data.Void (Void)
 
 newtype Pipe i o m a
   = Pipe (forall x. StateT (Stream i m x) (Stream o m) a)
@@ -232,6 +233,15 @@ map f = go
         Just a -> do
           send (f a)
           go
+
+fold :: forall a m. (Monoid a, Monad m) => Pipe a a m a
+fold = go mempty
+  where
+    go acc = do
+      input <- receive
+      case input of
+        Nothing -> pure acc
+        Just a -> go (acc <> a)
 
 -- ---------
 -- Consumers
