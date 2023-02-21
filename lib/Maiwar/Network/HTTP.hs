@@ -287,10 +287,10 @@ serializeHeader (HeaderField (HeaderFieldName name) content) = name <> ": " <> c
 -- >>> import qualified Maiwar.Pipe as Pipe
 -- >>> import qualified Maiwar.Stream as Stream
 -- >>> let emptyResponse = Response status200 [] (pure ())
--- >>> Stream.run (evalPipe (sendResponse emptyResponse >- Pipe.print) (Stream.yield "Hey" *> Stream.yield "There"))
+-- >>> Stream.run (evalPipe (sendResponseChunked emptyResponse >- Pipe.print) (Stream.yield "Hey" *> Stream.yield "There"))
 -- "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n"
 -- >>> let nonEmptyResponse = Response status200 [] (Pipe.send "Hey" *> Pipe.send "There")
--- >>> Stream.run (evalPipe (sendResponse nonEmptyResponse >- Pipe.print) (Stream.yield "Hey" *> Stream.yield "There"))
+-- >>> Stream.run (evalPipe (sendResponseChunked nonEmptyResponse >- Pipe.print) (Stream.yield "Hey" *> Stream.yield "There"))
 -- "HTTP/1.1 200 OK\r\ntransfer-encoding: chunked\r\n\r\n"
 -- "3\r\nHey\r\n"
 -- "5\r\nThere\r\n"
