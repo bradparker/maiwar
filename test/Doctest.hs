@@ -6,7 +6,8 @@ main :: IO ()
 main = doctest
   [
     "-ilib",
-    "-XOverloadedStrings",
+    "-XImpredicativeTypes",
     "-XOverloadedLists",
+    "-XOverloadedStrings",
     "lib"
   ]
