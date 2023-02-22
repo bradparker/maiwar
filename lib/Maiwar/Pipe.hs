@@ -15,7 +15,6 @@ import Data.Bifunctor (first)
 import Maiwar.Stream (Stream (Stream), next, run, yield)
 import qualified System.IO
 import Prelude hiding (filter, map, print)
-import Data.Void (Void)
 
 newtype Pipe i o m a
   = Pipe (forall x. StateT (Stream i m x) (Stream o m) a)
