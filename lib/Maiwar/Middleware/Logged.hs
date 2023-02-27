@@ -13,9 +13,9 @@ import qualified Data.ByteString.Char8 as BSC
 import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Format.ISO8601 (iso8601Show)
 import Maiwar.Handler
-  ( Handler,
+  ( HTTPVersion (HTTPVersion),
+    Handler,
     Method (Method),
-    HTTPVersion (HTTPVersion),
     Request (..),
     RequestTarget (RequestTarget),
     Response (..),

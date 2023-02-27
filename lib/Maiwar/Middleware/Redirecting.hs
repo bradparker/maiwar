@@ -1,7 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall #-}
@@ -9,16 +9,16 @@
 module Maiwar.Middleware.Redirecting where
 
 import Data.ByteString (ByteString)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import Maiwar.Handler
   ( Handler,
     Request (..),
     RequestTarget (RequestTarget),
-    status301,
     respond,
+    status301,
     (=:),
   )
-import qualified Data.Map.Strict as Map
-import Data.Map.Strict (Map)
 
 redirecting ::
   forall input m.

@@ -18,7 +18,7 @@ module Maiwar.Handler
     status301,
     status400,
     respond,
-    (=:)
+    (=:),
   )
 where
 

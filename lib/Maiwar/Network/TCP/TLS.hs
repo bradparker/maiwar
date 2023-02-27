@@ -11,7 +11,7 @@ import Data.ByteString (ByteString)
 import Maiwar.Pipe (Pipe, evalPipe)
 import Maiwar.Stream (Stream)
 import qualified Maiwar.Stream as Stream
-import Network.Simple.TCP (Socket, SockAddr)
+import Network.Simple.TCP (SockAddr, Socket)
 import Network.Simple.TCP.TLS (Context, ServerParams, recv, send)
 import qualified Network.Simple.TCP.TLS as TLS
 
