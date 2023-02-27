@@ -1,5 +1,4 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -40,7 +39,7 @@ newtype Method = Method ByteString
   deriving (Show)
 
 newtype RequestTarget = RequestTarget ByteString
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 data HTTPVersion = HTTPVersion Int Int
   deriving (Show)
@@ -115,6 +114,9 @@ data Status = Status Int ByteString
 
 status200 :: Status
 status200 = Status 200 "OK"
+
+status301 :: Status
+status301 = Status 301 "Moved Permanently"
 
 status400 :: Status
 status400 = Status 400 "Bad Request"

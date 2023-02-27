@@ -15,8 +15,10 @@ module Maiwar.Handler
     Response (..),
     Status (..),
     status200,
+    status301,
     status400,
     respond,
+    (=:)
   )
 where
 
@@ -28,7 +30,9 @@ import Maiwar.Network.HTTP
     Response (..),
     Status (..),
     status200,
+    status301,
     status400,
+    (=:),
   )
 import qualified Maiwar.Network.HTTP as HTTP
 import Maiwar.Pipe (Consumer, Pipe)
