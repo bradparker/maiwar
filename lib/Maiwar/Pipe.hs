@@ -111,6 +111,14 @@ instance forall i o m. MonadManaged m => MonadManaged (Pipe i o m) where
   using :: forall a. Managed a -> Pipe i o m a
   using m = lift (using m)
 
+instance forall i o m a. (Monad m, Semigroup a) => Semigroup (Pipe i o m a) where
+  (<>) :: Pipe i o m a -> Pipe i o m a -> Pipe i o m a
+  a <> b = (<>) <$> a <*> b
+
+instance forall i o m a. (Monad m, Monoid a) => Monoid (Pipe i o m a) where
+  mempty :: Pipe i o m a
+  mempty = pure mempty
+
 -- ------------------
 -- Pipe composition
 -- ------------------

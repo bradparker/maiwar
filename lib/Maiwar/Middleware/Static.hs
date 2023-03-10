@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE LiberalTypeSynonyms #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -9,7 +10,7 @@ module Maiwar.Middleware.Static where
 
 import Control.Monad.Managed.Extra (MonadManaged)
 import Data.ByteString (ByteString)
-import Maiwar.Handler (Handler, Method (Method), Request (method), Response (body))
+import Maiwar.Handler (Method (Method), Request (method), Response (body), StreamingHandler)
 import Maiwar.Middleware.Static.Base (baseHandler)
 import Maiwar.Middleware.Static.Etag (etagged)
 import Maiwar.Middleware.Static.Gzip (gzipped)
@@ -18,8 +19,8 @@ static ::
   forall input m.
   MonadManaged m =>
   FilePath ->
-  Handler input ByteString m () ->
-  Handler input ByteString m ()
+  StreamingHandler input ByteString m () ->
+  StreamingHandler input ByteString m ()
 static directory fallback =
   let handler = etagged (gzipped (baseHandler directory))
    in \request -> do

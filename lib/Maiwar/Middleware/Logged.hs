@@ -23,10 +23,10 @@ import Maiwar.Handler
   )
 
 logged ::
-  forall input m.
+  forall m body.
   MonadIO m =>
-  Handler input ByteString m () ->
-  Handler input ByteString m ()
+  Handler m body ->
+  Handler m body
 logged handler request = do
   start <- liftIO getCurrentTime
   response <- handler request

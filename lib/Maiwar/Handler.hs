@@ -1,5 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE LiberalTypeSynonyms #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoFieldSelectors #-}
@@ -7,6 +9,8 @@
 
 module Maiwar.Handler
   ( Handler,
+    StreamingHandler,
+    SimpleHandler,
     handleConnection,
     HTTPVersion (..),
     Request (..),
@@ -22,12 +26,13 @@ module Maiwar.Handler
   )
 where
 
+import Control.Monad.Trans.Reader (ReaderT)
 import Data.ByteString (ByteString)
 import Maiwar.Network.HTTP
   ( HTTPVersion (..),
+    Headers,
     Method (..),
     RequestTarget (..),
-    Response (..),
     Status (..),
     status200,
     status301,
@@ -63,8 +68,27 @@ requestFromHTTPRequest
       httpVersion
       headers
 
-type Handler input output m result =
-  Request -> Consumer input m (Response (Pipe input output m result))
+data Response body = Response
+  { status :: Status,
+    headers :: Headers,
+    body :: body
+  }
+
+httpResponseFromResponse :: Response (Pipe input output m r) -> HTTP.Response input output m r
+httpResponseFromResponse response =
+  HTTP.Response
+    response.status
+    response.headers
+    response.body
+
+type Handler m body =
+  Request -> m (Response body)
+
+type StreamingHandler input output m result =
+  Handler (Consumer input m) (Pipe input output m result)
+
+type SimpleHandler input m output =
+  Handler (ReaderT input m) output
 
 respond ::
   forall m body.
@@ -78,16 +102,16 @@ respond status headers = pure . Response status headers
 toHTTPHandler ::
   forall m.
   Monad m =>
-  Handler ByteString ByteString m () ->
+  StreamingHandler ByteString ByteString m () ->
   SockAddr ->
-  HTTP.Handler ByteString ByteString m ()
+  HTTP.Handler m ()
 toHTTPHandler handler addr =
-  handler . requestFromHTTPRequest addr
+  (httpResponseFromResponse <$>) . handler . requestFromHTTPRequest addr
 
 handleConnection ::
   forall m.
   Monad m =>
-  Handler ByteString ByteString m () ->
+  StreamingHandler ByteString ByteString m () ->
   SockAddr ->
   Pipe ByteString ByteString m ()
 handleConnection handler addr =

@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LiberalTypeSynonyms #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
@@ -19,9 +20,9 @@ import Data.Maybe (listToMaybe)
 import Foreign.C (CInt)
 import Maiwar
   ( Config (Config),
-    Handler,
     OwnSocketConfig (OwnSocketConfig),
     ProvidedSocketConfig (..),
+    StreamingHandler,
     serve,
   )
 import qualified Maiwar
@@ -113,7 +114,7 @@ optionsToConfig options = do
     Just tlsOptions -> Just <$> tlsParams tlsOptions
   pure (Config tls listen)
 
-defaultMain :: Handler ByteString ByteString Managed () -> IO ()
+defaultMain :: StreamingHandler ByteString ByteString Managed () -> IO ()
 defaultMain handler = do
   options <- execParser (info optionsParser fullDesc)
   config <- optionsToConfig options

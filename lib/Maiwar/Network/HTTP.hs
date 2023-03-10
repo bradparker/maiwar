@@ -127,13 +127,13 @@ status404 = Status 404 "Not Found"
 status405 :: Status
 status405 = Status 405 "Method Not Allowed"
 
-data Response body = Response
+data Response input output m r = Response
   { status :: Status,
     headers :: Headers,
-    body :: body
+    body :: Pipe input output m r
   }
 
-response400 :: Monad m => Response (Pipe input output m ())
+response400 :: Monad m => Response input output m ()
 response400 = Response status400 [] (pure ())
 
 crlfParser :: Parser ByteString
@@ -300,7 +300,7 @@ serializeHeader (HeaderField (HeaderFieldName name) content) = name <> ": " <> c
 sendResponseChunked ::
   forall m.
   Monad m =>
-  Response (Pipe ByteString ByteString m ()) ->
+  Response ByteString ByteString m () ->
   Pipe ByteString ByteString m ()
 sendResponseChunked response =
   response.body >-> do
@@ -331,7 +331,7 @@ sendResponseChunked response =
 sendResponseBuffered ::
   forall m.
   Monad m =>
-  Response (Pipe ByteString ByteString m ()) ->
+  Response ByteString ByteString m () ->
   Pipe ByteString ByteString m ()
 sendResponseBuffered response =
   response.body >-> do
@@ -351,19 +351,19 @@ sendResponse ::
   forall m.
   Monad m =>
   HTTPVersion ->
-  Response (Pipe ByteString ByteString m ()) ->
+  Response ByteString ByteString m () ->
   Pipe ByteString ByteString m ()
 sendResponse version =
   case version of
     HTTPVersion 1 0 -> sendResponseBuffered
     _ -> sendResponseChunked
 
-type Handler input output m result =
-  Request -> Consumer input m (Response (Pipe input output m result))
+type Handler m result =
+  Request -> Consumer ByteString m (Response ByteString ByteString m result)
 
 handleRequest ::
   Monad m =>
-  Handler ByteString ByteString m () ->
+  Handler m () ->
   Request ->
   Pipe ByteString ByteString m ()
 handleRequest handler request =
@@ -375,7 +375,7 @@ handleRequest handler request =
 handleConnection ::
   forall m.
   Monad m =>
-  Handler ByteString ByteString m () ->
+  Handler m () ->
   Pipe ByteString ByteString m ()
 handleConnection handler = go
   where
