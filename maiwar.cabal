@@ -98,3 +98,29 @@ executable example-echo
     Haskell2010
   ghc-options:
     -fspecialise-aggressively -fexpose-all-unfoldings
+
+executable example-stream-vs-vanilla-stream
+  build-depends:
+    base ^>=4.16.0.0,
+    maiwar,
+  hs-source-dirs:
+    examples/stream-vs-vanilla/stream
+  main-is:
+    Main.hs
+  default-language:
+    Haskell2010
+  ghc-options:
+    -ddump-asm -ddump-to-file -fspecialise-aggressively -fexpose-all-unfoldings
+
+executable example-stream-vs-vanilla-vanilla
+  build-depends:
+    base ^>=4.16.0.0,
+    maiwar,
+  hs-source-dirs:
+    examples/stream-vs-vanilla/vanilla
+  main-is:
+    Main.hs
+  default-language:
+    Haskell2010
+  ghc-options:
+    -ddump-asm -ddump-to-file -fspecialise-aggressively -fexpose-all-unfoldings
