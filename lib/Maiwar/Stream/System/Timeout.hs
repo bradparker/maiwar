@@ -42,9 +42,9 @@ timeout ::
   Int ->
   Stream a m r ->
   Stream a m (Maybe r)
-timeout t s
-  | t < 0 = Just <$> s
-  | t == 0 = Nothing <$ s
+timeout t stream
+  | t < 0 = Just <$> stream
+  | t == 0 = Nothing <$ stream
   | otherwise = do
       (ex, timerThreadId) <- liftIO $ mask_ do
         pid <- myThreadId
@@ -52,13 +52,13 @@ timeout t s
         timerThreadId <- forkIOWithUnmask \unmask -> do
           unmask (threadDelay t >> throwTo pid ex)
         pure (ex, timerThreadId)
-      let after = liftIO (uninterruptibleMask_ (killThread timerThreadId))
-      result <-
-        ( (Just <$> s) `catch` \e ->
-            if e == ex
-              then pure Nothing
-              else throwM e
-          )
-          `onException` after
-      after
-      pure result
+      let after = liftIO do
+            uninterruptibleMask_ (killThread timerThreadId)
+      let action = do
+            result <- (Just <$> stream) `onException` after
+            after
+            pure result
+      action `catch` \e -> do
+        if e == ex
+          then pure Nothing
+          else throwM e

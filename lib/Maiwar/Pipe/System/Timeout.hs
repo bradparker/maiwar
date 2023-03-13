@@ -8,7 +8,6 @@ module Maiwar.Pipe.System.Timeout where
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadCatch, MonadThrow, throwM)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.Class (lift)
 import Maiwar.Pipe (Pipe, pipe, runPipe)
 import qualified Maiwar.Stream.System.Timeout as Stream
 
@@ -32,5 +31,5 @@ timeout ::
 timeout t p = pipe \stream -> do
   mr <- Stream.timeout t (runPipe p stream)
   case mr of
-    Nothing -> lift (throwM timeoutError)
+    Nothing -> throwM timeoutError
     Just (r, rest) -> pure (r, rest)
