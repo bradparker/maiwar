@@ -30,10 +30,12 @@ library
     Maiwar.Pipe
     Maiwar.Pipe.Attoparsec.ByteString
     Maiwar.Pipe.Managed
+    Maiwar.Pipe.System.Timeout
     Maiwar.Stream
     Maiwar.Stream.Attoparsec.ByteString
     Maiwar.Stream.ByteString
     Maiwar.Stream.Managed
+    Maiwar.Stream.System.Timeout
   build-depends:
     base ^>=4.16.0.0,
     attoparsec,

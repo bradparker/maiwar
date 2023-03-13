@@ -9,13 +9,16 @@
 
 module Maiwar.Stream where
 
+import Control.Exception (Exception)
 import Control.Monad (ap, when)
+import Control.Monad.Catch (MonadThrow (throwM), MonadCatch(catch))
 import Control.Monad.Error.Class (MonadError (catchError, throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Managed (Managed, MonadManaged (using))
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Data.Bifunctor (bimap)
 import Data.Coerce (coerce)
+import GHC.Stack (HasCallStack)
 
 newtype Stream o m a
   = Stream (m (Either a (o, Stream o m a)))
@@ -109,8 +112,20 @@ instance forall o e m. (MonadError e m) => MonadError e (Stream o m) where
   throwError :: e -> Stream f m a
   throwError = lift . throwError
 
-  catchError :: Stream f m a -> (e -> Stream f m a) -> Stream f m a
+  catchError :: Stream o m a -> (e -> Stream o m a) -> Stream o m a
   catchError stream catcher = Stream (next stream `catchError` (next . catcher))
+
+instance forall o m. MonadThrow m => MonadThrow (Stream o m) where
+  throwM :: HasCallStack => Exception e => e -> Stream o m a
+  throwM = lift . throwM
+
+instance forall o m. MonadCatch m => MonadCatch (Stream o m) where
+  catch :: HasCallStack => Exception e => Stream o m a -> (e -> Stream o m a) -> Stream o m a
+  catch stream catcher = Stream do
+    step <- next stream `catch` (next . catcher)
+    case step of
+      Left a -> pure (Left a)
+      Right (a, rest) -> pure (Right (a, rest `catch` catcher))
 
 -- --------------------
 -- Transforming streams
