@@ -33,6 +33,17 @@ instance Exception Timeout where
   toException = asyncExceptionToException
   fromException = asyncExceptionFromException
 
+-- This actually doesn't really work. It works if the only thing done
+-- with the stream returned by this function is to run it. Otherwise
+-- when other effectful operations are interleaved, say via `traverse`,
+-- then if the '<<timeout>>' exception is thrown during those effects
+-- it's not caught.
+--
+-- It might be possible to avoid this issue if interleaved effects are
+-- appropriately masked. But that seems awfully fragile.
+--
+-- I wonder if there's a way to achieve this using MVars and timing
+-- each layer in the stream. Might be slow and complex.
 timeout ::
   forall a m r.
   ( MonadIO m,
