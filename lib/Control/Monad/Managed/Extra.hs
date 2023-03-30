@@ -10,7 +10,7 @@ module Control.Monad.Managed.Extra
 where
 
 import Control.Exception.Safe (bracket)
-import Control.Monad.Catch (MonadCatch (catch), MonadThrow (throwM))
+import Control.Monad.Catch (MonadThrow (throwM))
 import Control.Monad.Managed
 import System.IO (Handle, IOMode)
 import qualified System.IO
@@ -23,7 +23,3 @@ withFile path mode = managed (System.IO.withFile path mode)
 
 instance MonadThrow Managed where
   throwM = liftIO . throwM
-
-instance MonadCatch Managed where
-  catch m catcher = managed \return_ -> do
-    with m return_ `catch` (flip with return_ . catcher)

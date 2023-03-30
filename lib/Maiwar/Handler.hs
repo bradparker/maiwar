@@ -26,7 +26,7 @@ module Maiwar.Handler
   )
 where
 
-import Control.Monad.Catch (MonadCatch)
+import Control.Monad.Catch (MonadThrow)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Reader (ReaderT)
 import Data.ByteString (ByteString)
@@ -112,7 +112,7 @@ toHTTPHandler handler addr =
 
 handleConnection ::
   forall m.
-  (MonadIO m, MonadCatch m) =>
+  (MonadIO m, MonadThrow m) =>
   StreamingHandler ByteString ByteString m () ->
   SockAddr ->
   Pipe ByteString ByteString m ()

@@ -17,7 +17,7 @@ module Maiwar.Network.HTTP where
 
 import Control.Applicative (empty)
 import Control.Monad (join, when, (<=<))
-import Control.Monad.Catch (MonadCatch)
+import Control.Monad.Catch (MonadThrow)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (lift)
 import Data.Attoparsec.ByteString (Parser)
@@ -377,7 +377,7 @@ handleRequest handler request =
 
 handleConnection ::
   forall m.
-  (MonadCatch m, MonadIO m) =>
+  (MonadIO m, MonadThrow m) =>
   Handler m () ->
   Pipe ByteString ByteString m ()
 handleConnection handler = go

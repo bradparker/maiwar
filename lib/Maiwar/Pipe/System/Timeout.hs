@@ -6,7 +6,7 @@
 module Maiwar.Pipe.System.Timeout where
 
 import Control.Exception (Exception)
-import Control.Monad.Catch (MonadCatch, MonadThrow, throwM)
+import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Monad.IO.Class (MonadIO)
 import Maiwar.Pipe (Pipe, pipe, runPipe)
 import qualified Maiwar.Stream.System.Timeout as Stream
@@ -22,7 +22,6 @@ timeoutError = TimeoutError "Timeout"
 timeout ::
   forall i o m r.
   ( MonadIO m,
-    MonadCatch m,
     MonadThrow m
   ) =>
   Int ->
