@@ -8,7 +8,7 @@
 
 module Maiwar.Middleware.Static where
 
-import Control.Monad.Managed.Extra (MonadManaged)
+import Control.Monad.Trans.Resource (MonadResource)
 import Data.ByteString (ByteString)
 import Maiwar.Handler (Method (Method), Request (method), Response (body), StreamingHandler)
 import Maiwar.Middleware.Static.Base (baseHandler)
@@ -17,7 +17,7 @@ import Maiwar.Middleware.Static.Gzip (gzipped)
 
 static ::
   forall input m.
-  MonadManaged m =>
+  MonadResource m =>
   FilePath ->
   StreamingHandler input ByteString m () ->
   StreamingHandler input ByteString m ()

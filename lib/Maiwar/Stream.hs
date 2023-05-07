@@ -12,8 +12,8 @@ module Maiwar.Stream where
 import Control.Monad (ap, when)
 import Control.Monad.Error.Class (MonadError (catchError, throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed (Managed, MonadManaged (using))
 import Control.Monad.Trans.Class (MonadTrans (lift))
+import Control.Monad.Trans.Resource (MonadResource (liftResourceT), ResourceT)
 import Data.Bifunctor (bimap)
 import Data.Coerce (coerce)
 
@@ -101,9 +101,9 @@ instance forall o m. (MonadIO m) => MonadIO (Stream o m) where
   liftIO :: forall a. IO a -> Stream o m a
   liftIO = lift . liftIO
 
-instance forall o m. MonadManaged m => MonadManaged (Stream o m) where
-  using :: forall a. Managed a -> Stream o m a
-  using = lift . using
+instance forall o m. MonadResource m => MonadResource (Stream o m) where
+  liftResourceT :: forall a. ResourceT IO a -> Stream o m a
+  liftResourceT = lift . liftResourceT
 
 instance forall o e m. (MonadError e m) => MonadError e (Stream o m) where
   throwError :: e -> Stream f m a

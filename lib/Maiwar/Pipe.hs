@@ -8,9 +8,9 @@ module Maiwar.Pipe where
 
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed (Managed, MonadManaged (using))
 import Control.Monad.State (StateT (StateT, runStateT), modify)
 import Control.Monad.Trans.Class (MonadTrans (lift))
+import Control.Monad.Trans.Resource (MonadResource (liftResourceT), ResourceT)
 import Data.Bifunctor (first)
 import Maiwar.Stream (Stream (Stream), next, run, yield)
 import qualified System.IO
@@ -107,9 +107,9 @@ instance forall i o m. MonadIO m => MonadIO (Pipe i o m) where
   liftIO :: forall a. IO a -> Pipe i o m a
   liftIO = lift . liftIO
 
-instance forall i o m. MonadManaged m => MonadManaged (Pipe i o m) where
-  using :: forall a. Managed a -> Pipe i o m a
-  using m = lift (using m)
+instance forall i o m. MonadResource m => MonadResource (Pipe i o m) where
+  liftResourceT :: forall a. ResourceT IO a -> Pipe i o m a
+  liftResourceT = lift . liftResourceT
 
 instance forall i o m a. (Monad m, Semigroup a) => Semigroup (Pipe i o m a) where
   (<>) :: Pipe i o m a -> Pipe i o m a -> Pipe i o m a

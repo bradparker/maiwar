@@ -9,17 +9,17 @@
 
 module Maiwar.Handlers.Static (static) where
 
-import Control.Monad.Managed.Extra (MonadManaged)
+import Control.Monad.Trans.Resource (MonadResource)
 import Data.ByteString (ByteString)
 import Maiwar.Handler (Method (Method), Request (method), StreamingHandler, respond)
 import qualified Maiwar.Middleware.Static as Middleware
 import Maiwar.Network.HTTP (status404, status405, (=:))
-import Maiwar.Pipe.Managed (sendFile)
+import Maiwar.Pipe.Resource (sendFile)
 import System.FilePath ((</>))
 
 static ::
   forall input m.
-  MonadManaged m =>
+  MonadResource m =>
   FilePath ->
   StreamingHandler input ByteString m ()
 static directory = Middleware.static directory \request ->

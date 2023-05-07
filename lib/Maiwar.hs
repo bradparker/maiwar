@@ -16,7 +16,7 @@ module Maiwar
   )
 where
 
-import Control.Monad.Managed.Extra (Managed)
+import Control.Monad.Trans.Resource (ResourceT)
 import Data.ByteString (ByteString)
 import Maiwar.Handler (Handler, StreamingHandler, handleConnection, respond, status200)
 import Maiwar.Network.TCP
@@ -27,5 +27,5 @@ import Maiwar.Network.TCP
   )
 import qualified Maiwar.Network.TCP as TCP
 
-serve :: Config -> StreamingHandler ByteString ByteString Managed () -> IO ()
+serve :: Config -> StreamingHandler ByteString ByteString (ResourceT IO) () -> IO ()
 serve config handler = TCP.serve config (handleConnection handler)

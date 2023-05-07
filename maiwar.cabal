@@ -13,7 +13,6 @@ extra-source-files:
 
 library
   exposed-modules:
-    Control.Monad.Managed.Extra
     Maiwar
     Maiwar.CLI
     Maiwar.Handler
@@ -29,11 +28,11 @@ library
     Maiwar.Network.TCP.TLS
     Maiwar.Pipe
     Maiwar.Pipe.Attoparsec.ByteString
-    Maiwar.Pipe.Managed
+    Maiwar.Pipe.Resource
     Maiwar.Stream
     Maiwar.Stream.Attoparsec.ByteString
     Maiwar.Stream.ByteString
-    Maiwar.Stream.Managed
+    Maiwar.Stream.Resource
   build-depends:
     base ^>=4.16.0.0,
     attoparsec,
@@ -41,12 +40,12 @@ library
     containers,
     exceptions,
     filepath,
-    managed,
     mtl,
     network,
     network-simple,
     network-simple-tls,
     optparse-applicative,
+    resourcet,
     safe-exceptions,
     stm,
     time,

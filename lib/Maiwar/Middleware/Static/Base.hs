@@ -14,8 +14,8 @@ where
 
 import Control.Monad.Error.Class (catchError, throwError)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed.Extra (MonadManaged)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
+import Control.Monad.Trans.Resource (MonadResource)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BSC
 import Data.Map (Map)
@@ -29,7 +29,7 @@ import Maiwar.Handler
   )
 import Maiwar.Network.HTTP (Headers, alterHeader)
 import Maiwar.Pipe (Consumer, Pipe)
-import Maiwar.Pipe.Managed (sendFile)
+import Maiwar.Pipe.Resource (sendFile)
 import System.FilePath ((</>))
 import qualified System.FilePath as FilePath
 import System.Posix.Files (FileStatus)
@@ -42,7 +42,7 @@ type StaticHandler m a =
 
 baseHandler ::
   forall m.
-  MonadManaged m =>
+  MonadResource m =>
   FilePath ->
   StaticHandler m ()
 baseHandler directory request = do

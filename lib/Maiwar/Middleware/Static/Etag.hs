@@ -10,8 +10,8 @@
 module Maiwar.Middleware.Static.Etag (etagged) where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed.Extra (MonadManaged)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
+import Control.Monad.Trans.Resource (MonadResource)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BSC
 import Maiwar.Handler
@@ -25,7 +25,7 @@ import qualified System.Posix.Files as Files
 
 etagged ::
   forall m.
-  MonadManaged m =>
+  MonadResource m =>
   StaticHandler m () ->
   StaticHandler m ()
 etagged baseHandler request = runMaybeT do

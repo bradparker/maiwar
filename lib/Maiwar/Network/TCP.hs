@@ -25,7 +25,7 @@ import Control.Exception.Safe (bracket, catch)
 import Control.Monad (when)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed.Extra (Managed, around, runManaged)
+import Control.Monad.Trans.Resource (ResourceT, runResourceT)
 import Data.ByteString (ByteString)
 import Data.Functor (void)
 import Foreign.C (CInt)
@@ -58,12 +58,12 @@ fromSocket size = Stream.unfold \socket -> do
     Nothing -> Left ()
     Just bytes -> Right (bytes, socket)
 
-acceptFork :: Socket -> (SockAddr -> Pipe ByteString ByteString Managed ()) -> IO ThreadId
+acceptFork :: Socket -> (SockAddr -> Pipe ByteString ByteString (ResourceT IO) ()) -> IO ThreadId
 acceptFork socket connectionHandler =
   TCP.acceptFork
     socket
     \(csocket, addr) ->
-      runManaged
+      runResourceT
         . toSocket csocket
         . evalPipe (connectionHandler addr)
         . fromSocket 16384
@@ -123,7 +123,7 @@ whileM_ predicate action = go
         action
         go
 
-serve :: Config -> (SockAddr -> Pipe ByteString ByteString Managed ()) -> IO ()
+serve :: Config -> (SockAddr -> Pipe ByteString ByteString (ResourceT IO) ()) -> IO ()
 serve config handler = do
   shutdown <- newEmptyTMVarIO @()
   connectionCount <- newTVarIO @Int 0
@@ -138,8 +138,9 @@ serve config handler = do
       ( catch
           ( void
               ( accept socket \addr -> do
-                  around onConnection afterConnection
+                  liftIO onConnection
                   handler addr
+                  liftIO afterConnection -- TODO: ensure this runs???
               )
           )
           handleAcceptException

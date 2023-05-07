@@ -9,8 +9,8 @@
 module Maiwar.Middleware.Static.Gzip (gzipped) where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed.Extra (MonadManaged)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
+import Control.Monad.Trans.Resource (MonadResource)
 import qualified Data.ByteString.Char8 as BSC
 import Maiwar.Handler (Request (headers), Response (body, headers))
 import Maiwar.Middleware.Static.Base (StaticHandler)
@@ -19,12 +19,12 @@ import Maiwar.Network.HTTP
     alterHeader,
     findHeader,
   )
-import Maiwar.Pipe.Managed (sendFile)
+import Maiwar.Pipe.Resource (sendFile)
 import qualified System.Posix.Files as Files
 
 gzipped ::
   forall m.
-  MonadManaged m =>
+  MonadResource m =>
   StaticHandler m () ->
   StaticHandler m ()
 gzipped baseHandler request = runMaybeT do

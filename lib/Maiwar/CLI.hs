@@ -13,8 +13,8 @@ import Control.Applicative (optional, (<|>))
 import Control.Monad (guard)
 import Control.Monad.Error.Class (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Managed (Managed)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
+import Control.Monad.Trans.Resource (ResourceT)
 import Data.ByteString (ByteString)
 import Data.Maybe (listToMaybe)
 import Foreign.C (CInt)
@@ -114,7 +114,7 @@ optionsToConfig options = do
     Just tlsOptions -> Just <$> tlsParams tlsOptions
   pure (Config tls listen)
 
-defaultMain :: StreamingHandler ByteString ByteString Managed () -> IO ()
+defaultMain :: StreamingHandler ByteString ByteString (ResourceT IO) () -> IO ()
 defaultMain handler = do
   options <- execParser (info optionsParser fullDesc)
   config <- optionsToConfig options
