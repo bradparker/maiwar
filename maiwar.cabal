@@ -28,11 +28,13 @@ library
     Maiwar.Network.TCP.TLS
     Maiwar.Pipe
     Maiwar.Pipe.Attoparsec.ByteString
-    Maiwar.Pipe.Resource
+    Maiwar.Pipe.System.IO
     Maiwar.Stream
     Maiwar.Stream.Attoparsec.ByteString
     Maiwar.Stream.ByteString
-    Maiwar.Stream.Resource
+    Maiwar.Stream.Exception
+    Maiwar.Stream.System.IO
+    Maiwar.Stream.System.Timeout
   build-depends:
     base ^>=4.16.0.0,
     attoparsec,
@@ -51,6 +53,8 @@ library
     time,
     transformers,
     unix,
+    unliftio,
+    unliftio-core,
   hs-source-dirs:
     lib
   default-language:

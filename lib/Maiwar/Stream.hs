@@ -10,7 +10,6 @@
 module Maiwar.Stream where
 
 import Control.Monad (ap, when)
-import Control.Monad.Error.Class (MonadError (catchError, throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Trans.Resource (MonadResource (liftResourceT), ResourceT)
@@ -32,7 +31,7 @@ instance Functor m => Functor (StreamF o m r) where
 -- ------------
 
 yield :: forall m a. Monad m => a -> Stream a m ()
-yield = yieldM . pure
+yield a = Stream (pure (Right (a, pure ())))
 
 yieldM :: forall m a. Monad m => m a -> Stream a m ()
 yieldM = Stream . ((Right . (,pure ())) <$>)
@@ -104,13 +103,6 @@ instance forall o m. (MonadIO m) => MonadIO (Stream o m) where
 instance forall o m. MonadResource m => MonadResource (Stream o m) where
   liftResourceT :: forall a. ResourceT IO a -> Stream o m a
   liftResourceT = lift . liftResourceT
-
-instance forall o e m. (MonadError e m) => MonadError e (Stream o m) where
-  throwError :: e -> Stream f m a
-  throwError = lift . throwError
-
-  catchError :: Stream f m a -> (e -> Stream f m a) -> Stream f m a
-  catchError stream catcher = Stream (next stream `catchError` (next . catcher))
 
 -- --------------------
 -- Transforming streams

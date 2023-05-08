@@ -19,7 +19,7 @@ import Maiwar.Network.HTTP
     alterHeader,
     findHeader,
   )
-import Maiwar.Pipe.Resource (sendFile)
+import Maiwar.Pipe.System.IO (sendFile)
 import qualified System.Posix.Files as Files
 
 gzipped ::

@@ -29,7 +29,7 @@ import Maiwar.Handler
   )
 import Maiwar.Network.HTTP (Headers, alterHeader)
 import Maiwar.Pipe (Consumer, Pipe)
-import Maiwar.Pipe.Resource (sendFile)
+import Maiwar.Pipe.System.IO (sendFile)
 import System.FilePath ((</>))
 import qualified System.FilePath as FilePath
 import System.Posix.Files (FileStatus)

@@ -14,7 +14,7 @@ import Data.ByteString (ByteString)
 import Maiwar.Handler (Method (Method), Request (method), StreamingHandler, respond)
 import qualified Maiwar.Middleware.Static as Middleware
 import Maiwar.Network.HTTP (status404, status405, (=:))
-import Maiwar.Pipe.Resource (sendFile)
+import Maiwar.Pipe.System.IO (sendFile)
 import System.FilePath ((</>))
 
 static ::
