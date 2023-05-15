@@ -15,9 +15,10 @@
 
 module Maiwar.Network.HTTP where
 
-import Control.Applicative (empty)
+import Control.Applicative (Alternative, empty)
 import Control.Monad (join, when, (<=<))
 import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Resource (MonadUnliftIO)
 import Data.Attoparsec.ByteString (Parser)
 import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
 import Data.ByteString (ByteString)
@@ -29,6 +30,7 @@ import GHC.Exts (IsList (fromList, toList, type Item), IsString (fromString))
 import Maiwar.Pipe (Consumer, Pipe, receive, send, subInput, (>->))
 import qualified Maiwar.Pipe as Pipe
 import qualified Maiwar.Pipe.Attoparsec.ByteString as Pipe.Attoparsec
+import Maiwar.Pipe.System.Timeout as Pipe
 import Maiwar.Stream (Stream, flush)
 import qualified Maiwar.Stream.Attoparsec.ByteString as Stream.Attoparsec
 import qualified Maiwar.Stream.ByteString as Stream.ByteString
@@ -374,15 +376,15 @@ handleRequest handler request =
 
 handleConnection ::
   forall m.
-  Monad m =>
+  (Alternative m, MonadUnliftIO m) =>
   Handler m () ->
   Pipe ByteString ByteString m ()
 handleConnection handler = go
   where
     go = do
-      result <- Pipe.Attoparsec.parse requestParser
+      result <- Pipe.timeout 30000000 (Pipe.Attoparsec.parse requestParser)
       case result of
-        Left _e -> sendResponse (HTTPVersion 1 1) response400
+        Left _e -> Pipe.timeout 30000000 (sendResponse (HTTPVersion 1 1) response400)
         Right request -> do
-          handleRequest handler request
+          Pipe.timeout 30000000 (handleRequest handler request)
           go

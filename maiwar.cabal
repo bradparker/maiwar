@@ -29,6 +29,7 @@ library
     Maiwar.Pipe
     Maiwar.Pipe.Attoparsec.ByteString
     Maiwar.Pipe.System.IO
+    Maiwar.Pipe.System.Timeout
     Maiwar.Stream
     Maiwar.Stream.Attoparsec.ByteString
     Maiwar.Stream.ByteString

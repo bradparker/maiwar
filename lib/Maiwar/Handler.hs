@@ -26,7 +26,9 @@ module Maiwar.Handler
   )
 where
 
+import Control.Applicative (Alternative)
 import Control.Monad.Trans.Reader (ReaderT)
+import Control.Monad.Trans.Resource (MonadUnliftIO)
 import Data.ByteString (ByteString)
 import Maiwar.Network.HTTP
   ( HTTPVersion (..),
@@ -110,7 +112,7 @@ toHTTPHandler handler addr =
 
 handleConnection ::
   forall m.
-  Monad m =>
+  (MonadUnliftIO m, Alternative m) =>
   StreamingHandler ByteString ByteString m () ->
   SockAddr ->
   Pipe ByteString ByteString m ()
