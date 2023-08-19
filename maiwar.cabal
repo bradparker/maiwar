@@ -37,7 +37,7 @@ library
     Maiwar.Stream.System.IO
     Maiwar.Stream.System.Timeout
   build-depends:
-    base ^>=4.16.0.0,
+    base ^>=4.17.0.0,
     attoparsec,
     bytestring,
     containers,
@@ -65,7 +65,7 @@ test-suite doctest
   type:
     exitcode-stdio-1.0
   build-depends:
-    base ^>=4.16.0.0,
+    base ^>=4.17.0.0,
     doctest
   hs-source-dirs:
     test
@@ -76,7 +76,7 @@ test-suite doctest
 
 executable maiwar
   build-depends:
-    base ^>=4.16.0.0,
+    base ^>=4.17.0.0,
     bytestring,
     containers,
     maiwar,
@@ -92,7 +92,7 @@ executable maiwar
 
 executable example-echo
   build-depends:
-    base ^>=4.16.0.0,
+    base ^>=4.17.0.0,
     maiwar,
   hs-source-dirs:
     examples/echo
@@ -105,7 +105,7 @@ executable example-echo
 
 executable example-stream-vs-vanilla-stream
   build-depends:
-    base ^>=4.16.0.0,
+    base ^>=4.17.0.0,
     maiwar,
   hs-source-dirs:
     examples/stream-vs-vanilla/stream
@@ -118,7 +118,7 @@ executable example-stream-vs-vanilla-stream
 
 executable example-stream-vs-vanilla-vanilla
   build-depends:
-    base ^>=4.16.0.0,
+    base ^>=4.17.0.0,
     maiwar,
   hs-source-dirs:
     examples/stream-vs-vanilla/vanilla

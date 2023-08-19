@@ -1,10 +1,10 @@
 let
   nixpkgs-source = builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/7d226b5d12965b214d299d553fff6a3db7e4202a.tar.gz";
+    url = "https://github.com/NixOS/nixpkgs/archive/4fe4a74fe55fcb512902bbdee59a7fdcc9f7c754.tar.gz";
   };
   nixpkgs = import nixpkgs-source {};
-  haskellPackages = nixpkgs.haskell.packages.ghc924;
-  package = import ./. { haskellPackages = haskellPackages; };
+  haskellPackages = nixpkgs.haskellPackages;
+  package = import ./. { inherit haskellPackages; };
 in
   haskellPackages.shellFor {
     packages = _: [ package ];
