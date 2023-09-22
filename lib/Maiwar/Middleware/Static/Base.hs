@@ -92,6 +92,7 @@ baseHandler directory request = do
           (".gif", "image/gif"),
           (".html", "text/html"),
           (".jpg", "image/jpeg"),
+          (".js", "application/javascript"),
           (".png", "image/png"),
           (".pdf", "application/pdf"),
           (".svg", "image/svg+xml"),
