@@ -58,6 +58,9 @@ cata f = c where c = f . fmap c . coerce
 fold :: forall o m a r. Functor m => (m (Either a (o, r)) -> r) -> Stream o m a -> r
 fold f = cata (f . coerce)
 
+for :: forall o m a r. Functor m => Stream o m a -> (m (Either a (o, r)) -> r) -> r
+for = flip fold
+
 -- | Run a stream, evaluating its effects and producing its result
 run :: forall o m a. (Monad m) => Stream o m a -> m a
 run = fold \action -> do
