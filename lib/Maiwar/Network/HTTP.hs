@@ -16,9 +16,10 @@
 module Maiwar.Network.HTTP where
 
 import Control.Applicative (Alternative, empty)
+import Control.Exception.Safe (MonadCatch)
 import Control.Monad (join, when, (<=<))
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (lift)
-import Control.Monad.Trans.Resource (MonadUnliftIO)
 import Data.Attoparsec.ByteString (Parser)
 import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
 import Data.ByteString (ByteString)
@@ -135,7 +136,7 @@ data Response input output m r = Response
     body :: Pipe input output m r
   }
 
-response400 :: Monad m => Response input output m ()
+response400 :: (Monad m) => Response input output m ()
 response400 = Response status400 [] (pure ())
 
 crlfParser :: Parser ByteString
@@ -209,7 +210,7 @@ chunkSizeParser = Attoparsec.hexadecimal <* crlfParser
 
 requestBody ::
   forall m a.
-  Monad m =>
+  (Monad m) =>
   Headers ->
   Stream ByteString m a ->
   Stream ByteString m (Stream ByteString m a)
@@ -222,7 +223,7 @@ requestBody headers stream =
 
 knownBody ::
   forall m a.
-  Monad m =>
+  (Monad m) =>
   Int ->
   Stream ByteString m a ->
   Stream ByteString m (Stream ByteString m a)
@@ -230,7 +231,7 @@ knownBody = Stream.ByteString.splitAt
 
 chunkedBody ::
   forall m a.
-  Monad m =>
+  (Monad m) =>
   Stream ByteString m a ->
   Stream ByteString m (Stream ByteString m a)
 chunkedBody stream = do
@@ -251,7 +252,7 @@ chunkedBody stream = do
 -- "3\r\nHey\r\n"
 -- "5\r\nThere\r\n"
 -- "0\r\n\r\n"
-encodeChunks :: forall m. Monad m => Pipe ByteString ByteString m ()
+encodeChunks :: forall m. (Monad m) => Pipe ByteString ByteString m ()
 encodeChunks =
   Pipe.filter (not . BSC.null) >-> do
     Pipe.map encodeChunk
@@ -301,7 +302,7 @@ serializeHeader (HeaderField (HeaderFieldName name) content) = name <> ": " <> c
 -- "0\r\n\r\n"
 sendResponseChunked ::
   forall m.
-  Monad m =>
+  (Monad m) =>
   Response ByteString ByteString m () ->
   Pipe ByteString ByteString m ()
 sendResponseChunked response =
@@ -332,7 +333,7 @@ sendResponseChunked response =
 
 sendResponseBuffered ::
   forall m.
-  Monad m =>
+  (Monad m) =>
   Response ByteString ByteString m () ->
   Pipe ByteString ByteString m ()
 sendResponseBuffered response =
@@ -351,7 +352,7 @@ sendResponseBuffered response =
 
 sendResponse ::
   forall m.
-  Monad m =>
+  (Monad m) =>
   HTTPVersion ->
   Response ByteString ByteString m () ->
   Pipe ByteString ByteString m ()
@@ -364,7 +365,7 @@ type Handler m result =
   Request -> Consumer ByteString m (Response ByteString ByteString m result)
 
 handleRequest ::
-  Monad m =>
+  (Monad m) =>
   Handler m () ->
   Request ->
   Pipe ByteString ByteString m ()
@@ -376,7 +377,7 @@ handleRequest handler request =
 
 handleConnection ::
   forall m.
-  (Alternative m, MonadUnliftIO m) =>
+  (Alternative m, MonadCatch m, MonadIO m) =>
   Handler m () ->
   Pipe ByteString ByteString m ()
 handleConnection handler = go

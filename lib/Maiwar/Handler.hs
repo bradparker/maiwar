@@ -27,8 +27,9 @@ module Maiwar.Handler
 where
 
 import Control.Applicative (Alternative)
+import Control.Exception.Safe (MonadCatch)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Reader (ReaderT)
-import Control.Monad.Trans.Resource (MonadUnliftIO)
 import Data.ByteString (ByteString)
 import Maiwar.Network.HTTP
   ( HTTPVersion (..),
@@ -94,7 +95,7 @@ type SimpleHandler input m output =
 
 respond ::
   forall m body.
-  Applicative m =>
+  (Applicative m) =>
   HTTP.Status ->
   HTTP.Headers ->
   body ->
@@ -103,7 +104,7 @@ respond status headers = pure . Response status headers
 
 toHTTPHandler ::
   forall m.
-  Monad m =>
+  (Monad m) =>
   StreamingHandler ByteString ByteString m () ->
   SockAddr ->
   HTTP.Handler m ()
@@ -112,7 +113,7 @@ toHTTPHandler handler addr =
 
 handleConnection ::
   forall m.
-  (MonadUnliftIO m, Alternative m) =>
+  (MonadCatch m, MonadIO m, Alternative m) =>
   StreamingHandler ByteString ByteString m () ->
   SockAddr ->
   Pipe ByteString ByteString m ()

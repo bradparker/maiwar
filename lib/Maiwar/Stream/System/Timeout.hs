@@ -1,27 +1,39 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Maiwar.Stream.System.Timeout where
 
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.IO.Unlift (MonadUnliftIO)
-import Control.Monad.Trans.Class (lift)
-import GHC.Clock (getMonotonicTimeNSec)
+import Control.Concurrent (forkIO, killThread, myThreadId, threadDelay, throwTo)
+import Control.Exception (Exception (..), SomeAsyncException, asyncExceptionFromException, asyncExceptionToException)
+import Control.Exception.Safe (MonadCatch)
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Data.Unique (Unique, newUnique)
 import Maiwar.Stream (Stream)
-import qualified Maiwar.Stream as Stream
-import qualified UnliftIO.Timeout
+import Maiwar.Stream.Exception as Stream
 
-timeout :: forall o m a. (MonadUnliftIO m) => Int -> Stream o m a -> Stream o m (Maybe a)
+newtype Timeout = Timeout Unique deriving (Eq)
+
+instance Show Timeout where
+  show _ = "<<timeout>>"
+
+instance Exception Timeout where
+  toException = asyncExceptionToException
+  fromException = asyncExceptionFromException
+
+timeout :: forall o m a. (MonadIO m, MonadCatch m) => Int -> Stream o m a -> Stream o m (Maybe a)
 timeout limit stream = do
-  start <- liftIO getMonotonicTimeNSec
-  Stream.for stream \action -> do
-    now <- liftIO getMonotonicTimeNSec
-    let elapsedNanoSeconds = now - start
-    let elapsedMicroseconds = fromIntegral (elapsedNanoSeconds `div` 1000000)
-    let remaining = max 0 (limit - elapsedMicroseconds)
-    step <- lift (UnliftIO.Timeout.timeout remaining action)
-    case step of
-      Nothing -> pure Nothing
-      Just (Left a) -> pure (Just a)
-      Just (Right (o, rest)) -> Stream.yield o *> rest
+  pid <- liftIO myThreadId
+  ex <- liftIO (Timeout <$> newUnique)
+  threadId <-
+    liftIO
+      ( forkIO do
+          threadDelay limit
+          throwTo pid ex
+      )
+  result <- Stream.tryAsync @SomeAsyncException stream
+  liftIO (killThread threadId)
+  case result of
+    Left _ -> pure Nothing
+    Right a -> pure (Just a)
