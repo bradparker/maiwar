@@ -1,39 +1,32 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Maiwar.Stream.System.Timeout where
 
-import Control.Concurrent (forkIO, killThread, myThreadId, threadDelay, throwTo)
-import Control.Exception (Exception (..), SomeAsyncException, asyncExceptionFromException, asyncExceptionToException)
-import Control.Exception.Safe (MonadCatch)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, isEmptyMVar)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Unique (Unique, newUnique)
-import Maiwar.Stream (Stream)
-import Maiwar.Stream.Exception as Stream
+import GHC.Event (getSystemTimerManager, registerTimeout)
+import Maiwar.Stream (Stream, yield)
+import qualified Maiwar.Stream as Stream
 
-newtype Timeout = Timeout Unique deriving (Eq)
-
-instance Show Timeout where
-  show _ = "<<timeout>>"
-
-instance Exception Timeout where
-  toException = asyncExceptionToException
-  fromException = asyncExceptionFromException
-
-timeout :: forall o m a. (MonadIO m, MonadCatch m) => Int -> Stream o m a -> Stream o m (Maybe a)
+timeout :: forall o m a. (MonadIO m) => Int -> Stream o m a -> Stream o m (Maybe a)
 timeout limit stream = do
-  pid <- liftIO myThreadId
-  ex <- liftIO (Timeout <$> newUnique)
-  threadId <-
-    liftIO
-      ( forkIO do
-          threadDelay limit
-          throwTo pid ex
-      )
-  result <- Stream.tryAsync @SomeAsyncException stream
-  liftIO (killThread threadId)
-  case result of
-    Left _ -> pure Nothing
-    Right a -> pure (Just a)
+  timedOut <- liftIO newEmptyMVar
+  _ <- liftIO do
+    tm <- getSystemTimerManager
+    registerTimeout tm limit do
+      putMVar timedOut ()
+  Stream.for stream \action -> do
+    step <- lift action
+    case step of
+      Left result -> pure (Just result)
+      Right (a, rest) -> do
+        continue <- liftIO (isEmptyMVar timedOut)
+        if continue
+          then do
+            yield a
+            rest
+          else do
+            pure Nothing
